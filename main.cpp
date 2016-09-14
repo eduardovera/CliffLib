@@ -4,7 +4,12 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
 
-    multivector M({0.0, -3.0, 2.5, -4.0, 5.0, -9.0, 4.2, -1.3, 8.0});
-    M.print();
+    multivector<double> M({1.0, -3.0, 6.0, 5.0});
+    cout << M << endl;
+
+//    cout << e(1) << endl;
+
+//    cout << M.pop(2) << endl;
 
 }
+
