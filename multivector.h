@@ -14,24 +14,46 @@ class multivector {
     private:
         std::map<uint, coeff_type> M;
 
-        string get_base(int index) const {
+       string get_base(int index) const {
             string ret = "";
-            std::string binary = std::bitset<32>(index).to_string();
-            reverse(binary.begin(), binary.end());
-            string s = "1";
-
-            size_t pos = binary.find(s);
-            if (pos == string::npos) {
-            }
-            while(pos != string::npos) {
-                ret.append("e");
-                ret.append(to_string(pos + 1));
-                pos = binary.find(s, pos+1);
-                if (pos != string::npos) {
-                    ret.append("^");
+            std::bitset<32> binary(index);
+            cout << binary << endl;
+            for (int i = 0; i < 5; i++) {
+                int v = pow(2, i);
+                std::bitset<32> b = binary >> v;
+                if (b.test(0)) {
+                    ret.append("e" + to_string(i + 1) + "");
+                    b.flip(0);
+                    if (b.any()) {
+                        ret.append("^");
+                    }
                 }
             }
+//            if (output.any()) {
+//                if (out)
+//            }
+//            ret.append("e(" + to_string(i + 1) + ")");
             return ret;
+
+
+
+//            string ret = "";
+//            std::string binary = std::bitset<32>(index).to_string();
+//            reverse(binary.begin(), binary.end());
+//            string s = "1";
+
+//            size_t pos = binary.find(s);
+//            if (pos == string::npos) {
+//            }
+//            while(pos != string::npos) {
+//                ret.append("e");
+//                ret.append(to_string(pos + 1));
+//                pos = binary.find(s, pos+1);
+//                if (pos != string::npos) {
+//                    ret.append("^");
+//                }
+//            }
+//            return ret;
         }
 
     public:
