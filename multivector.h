@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <type_traits>
 
-#define MAX_DIMENSIONS 5
+#define MAX_DIMENSIONS 6
 
 template<class coeff_type, int k = MAX_DIMENSIONS>
 class multivector {
@@ -36,15 +36,6 @@ class multivector {
         multivector() {
         }
 
-        multivector(const std::initializer_list<coeff_type> &l) {
-            int index = 0;
-            for (auto it = l.begin(); it != l.end(); ++it) {
-                if ((*it) != 0.0) {
-                    M[index] = (*it);
-                }
-                index++;
-            }
-        }
 
     template<class T, int K> friend std::ostream& operator << (std::ostream &, const multivector<T, K> &);
     template<class T, int K> friend multivector<T, K> e(int);
@@ -53,6 +44,9 @@ class multivector {
     template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator + (const multivector<T, K> &, const multivector<U, K> &);
     template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator - (const multivector<T, K> &, const multivector<U, K> &);
     template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator * (const T &, const multivector<U, K> &);
+    template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator ^ (const multivector<T, K> &, const multivector<U, K> &);
+
+    template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> canonical_form (const multivector<T, K> &, const multivector<U, K> &);
 };
 
 template<class coeff_type, int K = MAX_DIMENSIONS>
@@ -150,6 +144,16 @@ multivector<typename std::common_type<coeff_type, U>::type, K> operator * (const
 template<class coeff_type, class U, int K = MAX_DIMENSIONS>
 multivector<typename std::common_type<coeff_type, U>::type, K> operator * (const multivector<U, K> &m, const coeff_type &s) {
     return s * m;
+}
+
+template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
+int canonical_form (multivector<coeff_type1, K> &m1, multivector<coeff_type2, K> &m2) {
+    return m2;
+}
+
+template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
+multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operator ^ (const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2) {
+    return m2;
 }
 
 #endif // MULTIVECTOR_H
