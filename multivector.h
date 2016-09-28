@@ -33,20 +33,15 @@ class multivector {
 
     public:
 
-        multivector() {
-        }
+        template<class T, int K> friend std::ostream& operator << (std::ostream &, const multivector<T, K> &);
+        template<class T, int K> friend multivector<T, K> e(int);
+        template<class T, int K> friend multivector<T, K> scalar(T);
 
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator + (const multivector<T, K> &, const multivector<U, K> &);
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator - (const multivector<T, K> &, const multivector<U, K> &);
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator * (const T &, const multivector<U, K> &);
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator ^ (const multivector<T, K> &, const multivector<U, K> &);
 
-    template<class T, int K> friend std::ostream& operator << (std::ostream &, const multivector<T, K> &);
-    template<class T, int K> friend multivector<T, K> e(int);
-    template<class T, int K> friend multivector<T, K> scalar(T);
-
-    template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator + (const multivector<T, K> &, const multivector<U, K> &);
-    template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator - (const multivector<T, K> &, const multivector<U, K> &);
-    template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator * (const T &, const multivector<U, K> &);
-    template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator ^ (const multivector<T, K> &, const multivector<U, K> &);
-
-    template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> canonical_form (const multivector<T, K> &, const multivector<U, K> &);
 };
 
 template<class coeff_type, int K = MAX_DIMENSIONS>
@@ -147,13 +142,17 @@ multivector<typename std::common_type<coeff_type, U>::type, K> operator * (const
 }
 
 template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
-int canonical_form (multivector<coeff_type1, K> &m1, multivector<coeff_type2, K> &m2) {
-    return m2;
-}
-
-template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
 multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operator ^ (const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2) {
-    return m2;
+    multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> multivector_r;
+
+    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
+        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
+            if (!((*it1).first & (*it2).first)) {
+                multivector_r.M[((*it1).first | (*it2).first)] = (*it1).first < (*it2).first ? (*it1).second * (*it2).second : -(*it1).second * (*it2).second;
+            }
+        }
+    }
+    return multivector_r;
 }
 
 #endif // MULTIVECTOR_H
