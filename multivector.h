@@ -6,9 +6,13 @@
 #include <bitset>
 #include <algorithm>
 #include <type_traits>
+#include <utils.h>
+
 
 #define MAX_DIMENSIONS 6
+#ifdef __MINGW32__
 typedef uint8_t uint;
+#endif
 
 template<int K = MAX_DIMENSIONS>
 int canonical_sort(const int, const int);
@@ -41,6 +45,7 @@ class multivector {
         template<class T, int K> friend std::ostream& operator << (std::ostream &, const multivector<T, K> &);
         template<class T, int K> friend multivector<T, K> e(int);
         template<class T, int K> friend multivector<T, K> scalar(T);
+        template<class T, int K> friend int take_grade(const multivector<T, K> &);
 
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator + (const multivector<T, K> &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator - (const multivector<T, K> &, const multivector<U, K> &);
@@ -161,20 +166,31 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operat
 }
 
 template<int K = MAX_DIMENSIONS>
-int canonical_sort(const int b1, const int b2) {
-    std::bitset<1 << K> bin_1(b1);
-    std::bitset<1 << K> bin_2(b2);
-
+int canonical_sort(int mask_1, int mask_2) {
     int swaps = 0;
-    bin_1 = bin_1 >> 1;
-    while (!bin_1.none()) {
-        swaps += (bin_1 & bin_2).count();
-        bin_1 = bin_1 >> 1;
+    mask_1 = mask_1 >> 1;
+    while (hamming_weight(mask_1) != 0) {
+        swaps += hamming_weight(mask_1 & mask_2);
+        mask_1 = mask_1 >> 1;
     }
-    if ((std::bitset<1 << K>(swaps) & std::bitset<1 << K>(1)).none()) {
+    if (hamming_weight(swaps & 1) == 0) {
         return 1;
     }
     return - 1;
+}
+
+template<class coeff_type, int K = MAX_DIMENSIONS>
+int take_grade(const multivector<coeff_type, K> &m) {
+    auto it = m.M.begin();
+    int count = hamming_weight((*it).first);
+    ++it;
+    while (it != m.M.end()) {
+        if (hamming_weight((*it).first) != count) {
+            return -1;
+        }
+        ++it;
+    }
+    return count;
 }
 
 #endif // MULTIVECTOR_H

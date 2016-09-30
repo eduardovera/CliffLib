@@ -4,8 +4,8 @@ using namespace std;
 
 int main(int argc, char *argv[]) {
 
-    multivector<double> M = 5 + e(1) ^ e(2);
-    cout << M << endl;
+    multivector<double> M = (e(2) ^ e(1));
+    cout << take_grade(M) << endl;
 
 }
 
