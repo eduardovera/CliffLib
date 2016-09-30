@@ -42,15 +42,16 @@ class multivector {
 
     public:
 
-        template<class T, int K> friend std::ostream& operator << (std::ostream &, const multivector<T, K> &);
         template<class T, int K> friend multivector<T, K> e(int);
         template<class T, int K> friend multivector<T, K> scalar(T);
         template<class T, int K> friend int take_grade(const multivector<T, K> &);
 
+        template<class T, int K> friend std::ostream& operator << (std::ostream &, const multivector<T, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator + (const multivector<T, K> &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator - (const multivector<T, K> &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator * (const T &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator ^ (const multivector<T, K> &, const multivector<U, K> &);
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RP (const multivector<T, K> &, const multivector<U, K> &);
 
 };
 
@@ -157,8 +158,16 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operat
 
     for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
         for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
+            std::bitset<K> a((*it1).first);
+            std::bitset<K> b((*it2).first);
+            std::bitset<K> c = a | b;
+            std::cout << a << std::endl;
+            std::cout << b << std::endl;
+            std::cout << c << std::endl;
             if (!((*it1).first & (*it2).first)) {
-                multivector_r.M[((*it1).first | (*it2).first)] += canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
+                for (int i = 1; i <= K; i++) {
+                    multivector_r.M[((*it1).first | (*it2).first) >> 1] = canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
+                }
             }
         }
     }
@@ -179,6 +188,12 @@ int canonical_sort(int mask_1, int mask_2) {
     return - 1;
 }
 
+
+/**
+ *
+ * CANDIDATO A REMOÇÃO
+ *
+ */
 template<class coeff_type, int K = MAX_DIMENSIONS>
 int take_grade(const multivector<coeff_type, K> &m) {
     auto it = m.M.begin();
@@ -191,6 +206,27 @@ int take_grade(const multivector<coeff_type, K> &m) {
         ++it;
     }
     return count;
+}
+
+int take_grade(int mask) {
+    return hamming_weight(mask);
+}
+
+
+template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
+multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> RP(const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2) {
+    multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> multivector_r;
+
+    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
+        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
+            int n = (*it1).first > (*it2).first ? (*it1).first : (*it2).first;
+            int mask_r = (*it1).first & (*it2).first;
+            if ((take_grade((*it1).first) + take_grade((*it2).first) - take_grade(mask_r)) == n) {
+                multivector_r.M[mask_r] += canonical_sort((*it1).first ^ mask_r, (*it2).first ^ mask_r) * (*it1).second * (*it2).second;
+            }
+        }
+    }
+    return multivector_r;
 }
 
 #endif // MULTIVECTOR_H
