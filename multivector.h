@@ -8,6 +8,11 @@
 #include <type_traits>
 
 #define MAX_DIMENSIONS 6
+typedef uint8_t uint;
+
+template<int K = MAX_DIMENSIONS>
+int canonical_sort(const int, const int);
+
 
 template<class coeff_type, int k = MAX_DIMENSIONS>
 class multivector {
@@ -148,11 +153,28 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operat
     for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
         for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
             if (!((*it1).first & (*it2).first)) {
-                multivector_r.M[((*it1).first | (*it2).first)] = (*it1).first < (*it2).first ? (*it1).second * (*it2).second : -(*it1).second * (*it2).second;
+                multivector_r.M[((*it1).first | (*it2).first)] = canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
             }
         }
     }
     return multivector_r;
+}
+
+template<int K = MAX_DIMENSIONS>
+int canonical_sort(const int b1, const int b2) {
+    std::bitset<1 << K> bin_1(b1);
+    std::bitset<1 << K> bin_2(b2);
+
+    int swaps = 0;
+    bin_1 = bin_1 >> 1;
+    while (!bin_1.none()) {
+        swaps += (bin_1 & bin_2).count();
+        bin_1 = bin_1 >> 1;
+    }
+    if ((std::bitset<1 << K>(swaps) & std::bitset<1 << K>(1)).none()) {
+        return 1;
+    }
+    return - 1;
 }
 
 #endif // MULTIVECTOR_H
