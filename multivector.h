@@ -7,9 +7,9 @@
 #include <algorithm>
 #include <type_traits>
 #include <utils.h>
+#include <metric.h>
 
-
-#define MAX_DIMENSIONS 6
+#define MAX_DIMENSIONS 10
 #ifdef __MINGW32__
 typedef uint8_t uint;
 #endif
@@ -52,6 +52,9 @@ class multivector {
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator * (const T &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator ^ (const multivector<T, K> &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RP (const multivector<T, K> &, const multivector<U, K> &);
+
+        template<class T, class U, class M, int K> friend multivector<typename std::common_type<T, U>::type, K> GP (const multivector<T, K> &, const multivector<U, K> &, const Metric<M> &);
+
 
 };
 
@@ -158,16 +161,8 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operat
 
     for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
         for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-            std::bitset<K> a((*it1).first);
-            std::bitset<K> b((*it2).first);
-            std::bitset<K> c = a | b;
-            std::cout << a << std::endl;
-            std::cout << b << std::endl;
-            std::cout << c << std::endl;
             if (!((*it1).first & (*it2).first)) {
-                for (int i = 1; i <= K; i++) {
-                    multivector_r.M[((*it1).first | (*it2).first) >> 1] = canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
-                }
+                multivector_r.M[((*it1).first | (*it2).first)] = canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
             }
         }
     }
@@ -212,14 +207,12 @@ int take_grade(int mask) {
     return hamming_weight(mask);
 }
 
-
 template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
 multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> RP(const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2) {
     multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> multivector_r;
-
+    int n = std::max(take_grade(m1), take_grade(m2));
     for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
         for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-            int n = (*it1).first > (*it2).first ? (*it1).first : (*it2).first;
             int mask_r = (*it1).first & (*it2).first;
             if ((take_grade((*it1).first) + take_grade((*it2).first) - take_grade(mask_r)) == n) {
                 multivector_r.M[mask_r] += canonical_sort((*it1).first ^ mask_r, (*it2).first ^ mask_r) * (*it1).second * (*it2).second;
@@ -228,5 +221,11 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> RP(con
     }
     return multivector_r;
 }
+
+template<class T, class U, class M, int K>
+multivector<typename std::common_type<T, U>::type, K> GP (const multivector<T, K> &m1, const multivector<U, K> &m2, const Metric<M> &metric) {
+    return m1;
+}
+
 
 #endif // MULTIVECTOR_H

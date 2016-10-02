@@ -7,4 +7,5 @@ SOURCES += main.cpp
 
 HEADERS += \
     multivector.h \
-    utils.h
+    utils.h \
+    metric.h
