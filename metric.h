@@ -8,6 +8,7 @@ class Metric {
     public:
         Metric(){}
         virtual T factor(int i, int j){}
+        virtual T factor(int i){}
 };
 
 template<class T>
@@ -20,6 +21,10 @@ class OrthogonalMetric : public Metric<T> {
         OrthogonalMetric() {}
         OrthogonalMetric(std::vector<T> d) {
             this->d = d;
+        }
+
+        T factor(int i) {
+            return d[i];
         }
 
         T factor (int i, int j) {
@@ -35,6 +40,10 @@ class OrthonormalMetric : public OrthogonalMetric<T> {
 
     public :
         OrthonormalMetric() {}
+
+        T factor(int i) {
+            return 1;
+        }
 
         T factor (int i, int j) {
             return i == j;
