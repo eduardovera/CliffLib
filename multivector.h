@@ -46,6 +46,9 @@ class multivector {
         template<class T, int K> friend multivector<T, K> scalar(T);
         template<class T, int K> friend int take_grade(const multivector<T, K> &);
         template<class T, int K> friend multivector<T, K> get_element_with_grade(const multivector<T, K> &, const int);
+        template<class T, int K> friend multivector<T, K> REVERSE(const multivector<T, K> &);
+        template<class T, int K> friend multivector<T, K> INV(const multivector<T, K> &, Metric<T> &);
+        template<class T, int K> friend T SQR_NORM_REVERSE(const multivector<T, K> &, Metric<T> &);
 
         template<class T, int K> friend std::ostream& operator << (std::ostream &, const multivector<T, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator + (const multivector<T, K> &, const multivector<U, K> &);
@@ -55,7 +58,8 @@ class multivector {
 
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RP (const multivector<T, K> &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> GP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
-        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> SCP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> IGP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
+        template<class T, class U, int K> friend typename std::common_type<T, U>::type SCP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> LCONT (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RCONT (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
 
@@ -167,7 +171,7 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operat
     for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
         for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
             if (!((*it1).first & (*it2).first)) {
-                multivector_r.M[((*it1).first | (*it2).first)] = canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
+                    multivector_r.M[((*it1).first | (*it2).first)] = canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
             }
         }
     }
@@ -251,11 +255,9 @@ multivector<typename std::common_type<T, U>::type, K> GP (const multivector<T, K
 }
 
 template<class T, class U, int K>
-multivector<typename std::common_type<T, U>::type, K> SCP (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
-    multivector<typename std::common_type<T, U>::type, K> multivector_r;
+typename std::common_type<T, U>::type SCP (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
     multivector<typename std::common_type<T, U>::type, K> temp = GP(m1, m2, metric);
-    multivector_r.M[0] = temp.M[0];
-    return multivector_r;
+    return get_element_with_grade(temp, 0).M[0];
 }
 
 template<class T, class U, int K>
@@ -275,6 +277,40 @@ multivector<typename std::common_type<T, U>::type, K> RCONT (const multivector<T
     if (take_grade(m1) >= take_grade(m2)) {
         multivector_r = get_element_with_grade(temp, take_grade(m1) - take_grade(m2));
     }
+    return multivector_r;
+}
+
+template<class coeff_type, int K = MAX_DIMENSIONS>
+multivector<coeff_type, K> REVERSE(const multivector<coeff_type, K> &m) {
+    // assert that m is a blade
+    multivector<coeff_type, K> multivector_r;
+    auto it = m.M.begin();
+    int g = take_grade(m);
+    int ex = ((int)(g * (g-1))) >> 1;
+    multivector_r.M[it->first] = std::pow(-1, ex) * m.M.at(it->first);
+    return multivector_r;
+}
+
+template<class coeff_type, int K = MAX_DIMENSIONS>
+coeff_type SQR_NORM_REVERSE(const multivector<coeff_type, K> &m, Metric<coeff_type> &metric) {
+    // assert that m is a blade
+    return SCP(m, REVERSE(m), metric);
+}
+
+template<class coeff_type, int K = MAX_DIMENSIONS>
+multivector<coeff_type, K> INV(const multivector<coeff_type, K> &m, Metric<coeff_type> &metric) {
+    // assert that m is a blade
+    multivector<coeff_type, K> multivector_r;
+    multivector<coeff_type, K> temp = REVERSE(m);
+    coeff_type norm = SQR_NORM_REVERSE(m, metric);
+    auto it = temp.M.begin();
+    multivector_r.M[it->first] = it->second / norm;
+    return multivector_r;
+}
+
+template<class T, class U, int K>
+multivector<typename std::common_type<T, U>::type, K> IGP (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
+    multivector<typename std::common_type<T, U>::type, K> multivector_r = GP(m1, INV(m2, metric), metric);
     return multivector_r;
 }
 
