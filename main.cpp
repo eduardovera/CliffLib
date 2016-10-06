@@ -15,12 +15,8 @@ int main(int argc, char *argv[]) {
      **/
 
     OrthonormalMetric<double> m;
-    multivector<double> B = e(1);
-    multivector<double> C = e(1)^e(2);
-    multivector<double> A = GP(B, C, m);
-    B = IGP(A, C, m);
-
-    cout << B << endl;
+    multivector<double> M = (e(1) ^ (e(2) + 2*e(3)) ^ e(4)) ^ (e(2) + e(3));
+    cout << M << endl;
 
 }
 

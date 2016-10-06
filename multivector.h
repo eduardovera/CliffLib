@@ -171,7 +171,7 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operat
     for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
         for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
             if (!((*it1).first & (*it2).first)) {
-                    multivector_r.M[((*it1).first | (*it2).first)] = canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
+                    multivector_r.M[((*it1).first | (*it2).first)] += canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
             }
         }
     }
