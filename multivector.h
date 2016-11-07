@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <utils.h>
 #include <metric.h>
+#include <functional>
 
 #define MAX_DIMENSIONS 10
 #ifdef __MINGW32__
@@ -15,7 +16,7 @@ typedef uint8_t uint;
 #endif
 
 template<int K = MAX_DIMENSIONS>
-int canonical_sort(const int, const int);
+int canonical_sort(uint, uint);
 
 
 template<class coeff_type, int k = MAX_DIMENSIONS>
@@ -62,6 +63,7 @@ class multivector {
         template<class T, class U, int K> friend typename std::common_type<T, U>::type SCP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> LCONT (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RCONT (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> generic_call (const multivector<T, K> &m1, const multivector<U, K> &m2, auto f );
 
 
 };
@@ -163,23 +165,31 @@ multivector<typename std::common_type<coeff_type, U>::type, K> operator * (const
     return s * m;
 }
 
+template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
+multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> generic_call (const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2, auto f ) {
+    multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> result;
+    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
+        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
+            result = result + f(it1->second, it1->first, it2->second, it2->first);
+        }
+    }
+    return result;
+}
 
 template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
 multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> operator ^ (const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2) {
-    multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> multivector_r;
-
-    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
-        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-            if (!((*it1).first & (*it2).first)) {
-                    multivector_r.M[((*it1).first | (*it2).first)] += canonical_sort((*it1).first, (*it2).first) * (*it1).second * (*it2).second;
-            }
+    auto OP = [&] (const coeff_type1 coef1, uint mask1, const coeff_type2 coef2, uint mask2) {
+        multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> multivector_r;
+        if (!(mask1 & mask2)) {
+            multivector_r.M[(mask1 | mask2)] = canonical_sort(mask1, mask2) * coef1 * coef2;
+            return multivector_r;
         }
-    }
-    return multivector_r;
+    };
+    return generic_call(m1, m2, OP);
 }
 
 template<int K = MAX_DIMENSIONS>
-int canonical_sort(int mask_1, int mask_2) {
+int canonical_sort(uint mask_1, uint mask_2) {
     int swaps = 0;
     mask_1 = mask_1 >> 1;
     while (hamming_weight(mask_1) != 0) {
@@ -244,14 +254,24 @@ multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> RP(con
 
 template<class T, class U, int K>
 multivector<typename std::common_type<T, U>::type, K> GP (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
-    multivector<typename std::common_type<T, U>::type, K> multivector_r;
-    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
-        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-            int mask_r = (*it1).first ^ (*it2).first;
-            multivector_r.M[mask_r] += canonical_sort((*it1).first, (*it2).first) * metric.factor((*it1).first & (*it2).first) * (*it1).second * (*it2).second;
-        }
-    }
-    return multivector_r;
+    auto GP = [&] (const T coef1, uint mask1, const U coef2, uint mask2) {
+        multivector<typename std::common_type<T, U>::type, K> multivector_r;
+        uint mask_r = mask1 ^ mask2;
+        multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1, mask2)) * coef1 * coef2;
+        return multivector_r;
+    };
+    return generic_call(m1, m2, GP);
+
+
+
+//    multivector<typename std::common_type<T, U>::type, K> multivector_r;
+//    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
+//        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
+//            int mask_r = (*it1).first ^ (*it2).first;
+//            multivector_r.M[mask_r] += canonical_sort((*it1).first, (*it2).first) * metric.factor((*it1).first & (*it2).first) * (*it1).second * (*it2).second;
+//        }
+//    }
+//    return multivector_r;
 }
 
 template<class T, class U, int K>
@@ -313,6 +333,5 @@ multivector<typename std::common_type<T, U>::type, K> IGP (const multivector<T, 
     multivector<typename std::common_type<T, U>::type, K> multivector_r = GP(m1, INV(m2, metric), metric);
     return multivector_r;
 }
-
 
 #endif // MULTIVECTOR_H
