@@ -57,10 +57,10 @@ class multivector {
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator * (const T &, const multivector<U, K> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> operator ^ (const multivector<T, K> &, const multivector<U, K> &);
 
-        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RP (const multivector<T, K> &, const multivector<U, K> &);
+        template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RP (const multivector<T, K> &, const multivector<U, K> &, int N_DIMS);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> GP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> IGP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
-        template<class T, class U, int K> friend typename std::common_type<T, U>::type SCP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
+        template<class T, class U, int K> friend typename std::common_type<T, U>::type  SCP (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> LCONT (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> RCONT (const multivector<T, K> &, const multivector<U, K> &, Metric<typename std::common_type<T, U>::type> &);
         template<class T, class U, int K> friend multivector<typename std::common_type<T, U>::type, K> generic_call (const multivector<T, K> &m1, const multivector<U, K> &m2, auto f );
@@ -238,18 +238,16 @@ multivector<coeff_type, K> get_element_with_grade(const multivector<coeff_type, 
 }
 
 template<class coeff_type1, class coeff_type2, int K = MAX_DIMENSIONS>
-multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> RP(const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2) {
-    multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> multivector_r;
-    int n = std::max(take_grade(m1), take_grade(m2));
-    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
-        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-            int mask_r = (*it1).first & (*it2).first;
-            if ((take_grade((*it1).first) + take_grade((*it2).first) - take_grade(mask_r)) == n) {
-                multivector_r.M[mask_r] += canonical_sort((*it1).first ^ mask_r, (*it2).first ^ mask_r) * (*it1).second * (*it2).second;
-            }
+multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> RP(const multivector<coeff_type1, K> &m1, const multivector<coeff_type2, K> &m2, int N_DIMS) {
+    auto RP = [&] (const coeff_type1 coef1, uint mask1, const coeff_type2 coef2, uint mask2) {
+        multivector<typename std::common_type<coeff_type1, coeff_type2>::type, K> multivector_r;
+        uint mask_r = mask1 & mask2;
+        if (take_grade(mask1) + take_grade(mask2) - take_grade(mask_r) == N_DIMS) {
+            multivector_r.M[mask_r] = canonical_sort(mask1 ^ mask_r, mask2 ^ mask_r) * coef1 * coef2;
+            return multivector_r;
         }
-    }
-    return multivector_r;
+    };
+    return generic_call(m1, m2, RP);
 }
 
 template<class T, class U, int K>
@@ -261,43 +259,45 @@ multivector<typename std::common_type<T, U>::type, K> GP (const multivector<T, K
         return multivector_r;
     };
     return generic_call(m1, m2, GP);
-
-
-
-//    multivector<typename std::common_type<T, U>::type, K> multivector_r;
-//    for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
-//        for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-//            int mask_r = (*it1).first ^ (*it2).first;
-//            multivector_r.M[mask_r] += canonical_sort((*it1).first, (*it2).first) * metric.factor((*it1).first & (*it2).first) * (*it1).second * (*it2).second;
-//        }
-//    }
-//    return multivector_r;
 }
 
 template<class T, class U, int K>
-typename std::common_type<T, U>::type SCP (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
-    multivector<typename std::common_type<T, U>::type, K> temp = GP(m1, m2, metric);
-    return get_element_with_grade(temp, 0).M[0];
+typename std::common_type<T, U>::type  SCP (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
+    auto SCP = [&] (const T coef1, uint mask1, const U coef2, uint mask2) {
+        multivector<typename std::common_type<T, U>::type, K> multivector_r;
+        uint mask_r = mask1 ^ mask2;
+        if (take_grade(mask_r) == 0) {
+            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1, mask2)) * coef1 * coef2;
+        }
+        return multivector_r;
+    };
+    return generic_call(m1, m2, SCP).M[0];
 }
 
 template<class T, class U, int K>
 multivector<typename std::common_type<T, U>::type, K> LCONT (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
-    multivector<typename std::common_type<T, U>::type, K> multivector_r;
-    multivector<typename std::common_type<T, U>::type, K> temp = GP(m1, m2, metric);
-    if (take_grade(m1) <= take_grade(m2)) {
-        multivector_r = get_element_with_grade(temp, take_grade(m2) - take_grade(m1));
-    }
-    return multivector_r;
+    auto LCONT = [&] (const T coef1, uint mask1, const U coef2, uint mask2) {
+        multivector<typename std::common_type<T, U>::type, K> multivector_r;
+        uint mask_r = mask1 ^ mask2;
+        if (take_grade(mask_r) == (take_grade(mask2) - take_grade(mask1))) {
+            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1, mask2)) * coef1 * coef2;
+        }
+        return multivector_r;
+    };
+    return generic_call(m1, m2, LCONT);
 }
 
 template<class T, class U, int K>
 multivector<typename std::common_type<T, U>::type, K> RCONT (const multivector<T, K> &m1, const multivector<U, K> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
-    multivector<typename std::common_type<T, U>::type, K> multivector_r;
-    multivector<typename std::common_type<T, U>::type, K> temp = GP(m1, m2, metric);
-    if (take_grade(m1) >= take_grade(m2)) {
-        multivector_r = get_element_with_grade(temp, take_grade(m1) - take_grade(m2));
-    }
-    return multivector_r;
+    auto RCONT = [&] (const T coef1, uint mask1, const U coef2, uint mask2) {
+        multivector<typename std::common_type<T, U>::type, K> multivector_r;
+        uint mask_r = mask1 ^ mask2;
+        if (take_grade(mask_r) == (take_grade(mask1) - take_grade(mask2))) {
+            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1, mask2)) * coef1 * coef2;
+        }
+        return multivector_r;
+    };
+    return generic_call(m1, m2, RCONT);
 }
 
 template<class coeff_type, int K = MAX_DIMENSIONS>
