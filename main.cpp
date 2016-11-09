@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
      **/
 
     OrthonormalMetric<double> m;
-    multivector<double> M = RP(5*e(1)^e(3), e(2), 3);
+    multivector<double> M = DELTA(e(1)^e(2)^e(3), e(1)^e(2)^e(3)^e(5), m);
     cout << M << endl;
 
 //    cout << lambda(2, 3);
