@@ -3,9 +3,10 @@ CONFIG += console c++14 debug
 CONFIG -= app_bundle
 CONFIG -= qt
 
+HEADERS += \
+    metric.h \
+    multivector.hpp
+
+
 SOURCES += main.cpp
 
-HEADERS += \
-    utils.h \
-    metric.h \
-    multivector.h

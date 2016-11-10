@@ -6,10 +6,25 @@
 template<class T>
 class Metric {
     public:
-        Metric(){}
-        virtual T factor(int i, int j){}
-        virtual T factor(int i){}
+        virtual T factor(int i, int j) = 0;
 };
+
+template<class T>
+class NonOrthogonalMetric : public Metric<T> {
+
+    private:
+        std::vector<std::vector<T>> Q;
+
+    public:
+        NonOrthogonalMetric() {}
+        NonOrthogonalMetric(std::vector<std::vector<T>> Q){
+            this->Q = Q;
+        }
+        T factor(int i, int j){
+            return Q[i][j];
+        }
+};
+
 
 template<class T>
 class OrthogonalMetric : public Metric<T> {
@@ -21,10 +36,6 @@ class OrthogonalMetric : public Metric<T> {
         OrthogonalMetric() {}
         OrthogonalMetric(std::vector<T> d) {
             this->d = d;
-        }
-
-        T factor(int i) {
-            return d[i];
         }
 
         T factor (int i, int j) {
@@ -40,10 +51,6 @@ class OrthonormalMetric : public OrthogonalMetric<T> {
 
     public :
         OrthonormalMetric() {}
-
-        T factor(int i) {
-            return 1;
-        }
 
         T factor (int i, int j) {
             return i == j;
