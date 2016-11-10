@@ -1,6 +1,13 @@
 #include <iostream>
-#include <multivector.h>
+
+#define N_DIMS 3
+#include "multivector.h"
+
 using namespace std;
+
+using namespace CliffLib;
+
+
 
 int main(int argc, char *argv[]) {
 
@@ -15,10 +22,8 @@ int main(int argc, char *argv[]) {
      **/
 
     OrthonormalMetric<double> m;
-    multivector<double> M = DELTA(e(1)^e(2)^e(3), e(1)^e(2)^e(3)^e(5), m);
+    multivector<double> M = e(1)^e(2)^e(3)^e(4);
     cout << M << endl;
-
-//    cout << lambda(2, 3);
 
 }
 

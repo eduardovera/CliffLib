@@ -6,6 +6,6 @@ CONFIG -= qt
 SOURCES += main.cpp
 
 HEADERS += \
-    multivector.h \
     utils.h \
-    metric.h
+    metric.h \
+    multivector.h
