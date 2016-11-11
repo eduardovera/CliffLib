@@ -6,7 +6,6 @@ using namespace std;
 using namespace CliffLib;
 
 
-
 int main() {
 
     /**
@@ -18,9 +17,12 @@ int main() {
      *
      **/
 
+    CliffLib::N_DIMS = 3;
+
     OrthonormalMetric<double> m;
-    multivector<double> k = UNDUAL(e(2), 3, m);
-    cout << k << endl;
+    vector<multivector<double>> k = MEET_AND_JOIN(e(1)^e(2), e(1)^e(3), m);
+    cout << k[0] << endl;
+    cout << k[1] << endl;
 //    double scaling;
 //    std::vector<multivector<double>> k = FACTORIZE(((10*e(1)^e(2)^e(5))+(3*e(1)^e(3)^e(5))+(4*(e(5)^e(3)^e(2)))), m, scaling);
 //    multivector<double> check = scaling * k[0];

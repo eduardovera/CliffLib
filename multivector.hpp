@@ -11,16 +11,18 @@
 #include <stdexcept>
 #include <vector>
 
+#define MAX_BITS 20
+
 namespace CliffLib {
 
-    const int N_DIMS = 4;
+    static int N_DIMS = -1;
 
-    typedef std::bitset<1 << N_DIMS> mask;
+    typedef std::bitset<MAX_BITS> mask;
 
     template<std::size_t N>
     struct Comparer {
         bool operator () (const std::bitset<N> &x, const std::bitset<N> &y) const {
-            return x.to_ulong() < y.to_ulong();
+            return x.to_ullong() < y.to_ullong();
         }
     };
 
@@ -29,17 +31,16 @@ namespace CliffLib {
     class multivector {
 
         private:
-            std::map<mask, coeff_type, Comparer<1 << N_DIMS>> M;
+            std::map<mask, coeff_type, Comparer<MAX_BITS>> M;
 
-            std::string get_base(std::bitset<1 << N_DIMS> m) const {
+            std::string get_base(std::bitset<MAX_BITS> m) const {
                 std::string ret = "";
                 mask binary = m;
-                for (int i = 1; i <= N_DIMS; i++) {
-                    mask b = binary >> (i);
-                    if (b.test(0)) {
+                for (int i = 1; i < MAX_BITS; i++) {
+                    if (binary.test(i)) {
                         ret.append("(e" + std::to_string(i) + ")");
-                        b.flip(0);
-                        if (b.any()) {
+                        binary.flip(i);
+                        if (binary.any()) {
                             ret.append("^");
                         }
                     }
@@ -66,7 +67,7 @@ namespace CliffLib {
 
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> generic_call (const multivector<T> &m1, const multivector<U> &m2, auto f );
 
-            template<class T, class U> friend multivector<typename std::common_type<T, U>::type> RP (const multivector<T> &, const multivector<U> &, int);
+            template<class T, class U> friend multivector<typename std::common_type<T, U>::type> RP (const multivector<T> &, const multivector<U> &);
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> GP (const multivector<T> &, const multivector<U> &, Metric<typename std::common_type<T, U>::type> &);
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> IGP (const multivector<T> &, const multivector<U> &, Metric<typename std::common_type<T, U>::type> &);
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> LCONT (const multivector<T> &, const multivector<U> &, Metric<typename std::common_type<T, U>::type> &);
@@ -76,13 +77,26 @@ namespace CliffLib {
 
             template<class T> friend std::vector<multivector<T>> FACTORIZE(const multivector<T> &, Metric<T> &, T &);
 
-            template<class T> friend multivector<T> DUAL(const multivector<T> &, int DIMS, Metric<T> &);
+            template<class T> friend multivector<T> DUAL(const multivector<T> &, Metric<T> &);
             template<class T, class U> friend multivector<T> DUAL(const multivector<T> &, const multivector<U> &, Metric<Metric<typename std::common_type<T, U>::type>> &);
 
-            template<class T> friend multivector<T> UNDUAL(const multivector<T> &, int DIMS, Metric<T> &);
+            template<class T> friend multivector<T> UNDUAL(const multivector<T> &, Metric<T> &);
             template<class T, class U> friend multivector<T> UNDUAL(const multivector<T> &, const multivector<U> &, Metric<Metric<typename std::common_type<T, U>::type>> &);
 
-            template<class T, class U> friend std::vector<multivector<typename std::common_type<T, U>::type>> MEET_AND_JOIN(const multivector<T> &, const multivector<U> &, Metric<typename std::common_type<T, U>::type> &);
+            template<class T, class U> friend std::vector<multivector<typename std::common_type<T, U>::type>> MEET_AND_JOIN(const multivector<T> &, const multivector<U> &, int, Metric<typename std::common_type<T, U>::type> &);
+
+            template<class T> friend multivector<T> PSEUDOSCALAR();
+            template<class T> friend multivector<T> SCALAR();
+
+            bool isZero() {
+                for (auto it = M.begin(); it != M.end(); ++it) {
+                    if (it->second != 0) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
 
     };
 
@@ -98,6 +112,26 @@ namespace CliffLib {
         }
         return grade;
     }
+
+    template<class T>
+    multivector<T> PSEUDOSCALAR() {
+        mask masc;
+        for (int i = 1; i <= N_DIMS; i++) {
+            masc[i] = 1;
+        }
+        multivector<T> I;
+        I.M[masc] = 1;
+        return I;
+    }
+
+    template<class T>
+    multivector<T> SCALAR() {
+        mask masc(0);
+        multivector<T> I;
+        I.M[masc] = 1;
+        return I;
+    }
+
 
     template<class T>
     std::ostream& operator << (std::ostream &os, const multivector<T> &m) {
@@ -117,7 +151,14 @@ namespace CliffLib {
 
     template<class T = double>
     multivector<T> e(int index) {
+        if (N_DIMS == -1) {
+            throw std::invalid_argument("Please define the dimensionality of your subspace by setting CliffLib::N_DIMS param.");
+        }
         multivector<T> r;
+        if (index >= MAX_BITS) {
+            std::string message = "Can't represent e(" + std::to_string(index) + ") with this amount of bits. Please select a higher value for MAX_BITS param by using #define MAX_BITS directive before including multivector.hpp";
+            throw std::invalid_argument(message);
+        }
         r.M[mask(1 << index)] = 1;
         return r;
     }
@@ -244,11 +285,11 @@ namespace CliffLib {
     }
 
     template<class T, class U>
-    multivector<typename std::common_type<T, U>::type> RP(const multivector<T> &m1, const multivector<U> &m2, int NDIMS) {
+    multivector<typename std::common_type<T, U>::type> RP(const multivector<T> &m1, const multivector<U> &m2) {
         auto RP = [&] (const T coef1, mask mask1, const U coef2, mask mask2) {
             multivector<typename std::common_type<T, U>::type> multivector_r;
             mask mask_r = mask1 & mask2;
-            if ((int)(mask1.count() + mask2.count() - mask_r.count()) == NDIMS) {
+            if ((int)(mask1.count() + mask2.count() - mask_r.count()) == N_DIMS) {
                 multivector_r.M[mask_r] = canonical_sort(mask1 ^ mask_r, mask2 ^ mask_r) * coef1 * coef2;
             }
             return multivector_r;
@@ -261,7 +302,7 @@ namespace CliffLib {
         auto GP = [&] (const T coef1, mask mask1, const U coef2, mask mask2) {
             multivector<typename std::common_type<T, U>::type> multivector_r;
             mask mask_r = mask1 ^ mask2;
-            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ulong(), (mask1 & mask2).to_ulong()) * coef1 * coef2;
+            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ullong()) * coef1 * coef2;
             return multivector_r;
         };
         return generic_call(m1, m2, GP);
@@ -273,7 +314,7 @@ namespace CliffLib {
             multivector<typename std::common_type<T, U>::type> multivector_r;
             mask mask_r = mask1 ^ mask2;
             if (mask_r.count() == 0) {
-                multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ulong()) * coef1 * coef2;
+                multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ullong()) * coef1 * coef2;
             }
             return multivector_r;
         };
@@ -286,7 +327,7 @@ namespace CliffLib {
             multivector<typename std::common_type<T, U>::type> multivector_r;
             mask mask_r = mask1 ^ mask2;
             if (mask_r.count() == mask2.count() - mask1.count()) {
-                multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ulong()) * coef1 * coef2;
+                multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ullong()) * coef1 * coef2;
             }
             return multivector_r;
         };
@@ -299,7 +340,7 @@ namespace CliffLib {
             multivector<typename std::common_type<T, U>::type> multivector_r;
             mask mask_r = mask1 ^ mask2;
             if (mask_r.count() == mask1.count() - mask2.count()) {
-                multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ulong()) * coef1 * coef2;
+                multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ullong()) * coef1 * coef2;
             }
             return multivector_r;
         };
@@ -353,9 +394,15 @@ namespace CliffLib {
     }
 
     template<class T, class U>
-    multivector<T> PROJECTION(const multivector<T> &m1, const multivector<U> &m2, Metric<T> &metric) {
+    multivector<T> ORTHO_PROJECT(const multivector<T> &m1, const multivector<U> &m2, Metric<T> &metric) {
         return LCONT(LCONT(m1, INV(m2, metric), metric), m2, metric);
     }
+
+    template<class T, class U>
+    multivector<T> ORTHO_REJECT(const multivector<T> &m1, const multivector<U> &m2, Metric<T> &metric) {
+        return RCONT((m1^m2), INV(m2, metric), metric);
+    }
+
 
     template<class T>
     std::vector<multivector<T>> FACTORIZE(const multivector<T> &m, Metric<T> &metric, T &scaling) {
@@ -376,14 +423,14 @@ namespace CliffLib {
         multivector<T> temp = m * inv_scaling;
         std::vector<multivector<T>> r;
 
-        for (int i = 1; i < 1 << N_DIMS; i++) {
+        for (int i = 1; i < MAX_BITS; i++) {
             if (masc.test(i)) {
                 mask e_ = masc.none();
                 e_[i] = 1;
                 multivector<T> e_j;
                 e_j.M[1 << i] = 1;
 
-                multivector<T> proj = PROJECTION(e_j, temp, metric);
+                multivector<T> proj = ORTHO_PROJECT(e_j, temp, metric);
                 multivector<T> factor_j = proj * inv_scaling;
                 r.push_back(factor_j);
                 temp = LCONT(INV(factor_j, metric), temp, metric);
@@ -394,15 +441,8 @@ namespace CliffLib {
     }
 
     template<class T>
-    multivector<T> DUAL(const multivector<T> &m, int DIMS, Metric<T> &metric) {
-        mask masc;
-        for (int i = 1; i <= DIMS; i++) {
-            masc[i] = 1;
-        }
-        multivector<T> I;
-        I.M[masc] = 1;
-
-        return LCONT(m, INV(I, metric), metric);
+    multivector<T> DUAL(const multivector<T> &m, Metric<T> &metric) {
+        return LCONT(m, INV(PSEUDOSCALAR<T>(), metric), metric);
     }
 
     template<class T, class U>
@@ -411,15 +451,8 @@ namespace CliffLib {
     }
 
     template<class T>
-    multivector<T> UNDUAL(const multivector<T> &m, int DIMS, Metric<T> &metric) {
-        mask masc;
-        for (int i = 1; i <= DIMS; i++) {
-            masc[i] = 1;
-        }
-        multivector<T> I;
-        I.M[masc] = 1;
-
-        return LCONT(m, I, metric);
+    multivector<T> UNDUAL(const multivector<T> &m, Metric<T> &metric) {
+        return LCONT(m, PSEUDOSCALAR<T>(), metric);
     }
 
     template<class T, class U>
@@ -427,9 +460,10 @@ namespace CliffLib {
         return LCONT(m1, m2, metric);
     }
 
-
     template<class T, class U>
     std::vector<multivector<typename std::common_type<T, U>::type>> MEET_AND_JOIN(const multivector<T> &m1, const multivector<U> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
+
+        std::vector<multivector<typename std::common_type<T, U>::type>> output(2);
 
         multivector<T> A = m1;
         multivector<T> B = m2;
@@ -444,8 +478,39 @@ namespace CliffLib {
 
         multivector<typename std::common_type<T, U>::type> delta = DELTA(A, B, metric);
         int t = (r + s - get_grade(delta)) >> 1;
+        double scaling;
+        std::vector<multivector<typename std::common_type<T, U>::type>> factors = FACTORIZE(DUAL(delta, metric), metric, scaling);
 
+        multivector<typename std::common_type<T, U>::type> meet = SCALAR<typename std::common_type<T, U>::type>();
+        multivector<typename std::common_type<T, U>::type> join = PSEUDOSCALAR<typename std::common_type<T, U>::type>();
 
+        for (auto f_j : factors) {
+            auto proj = ORTHO_PROJECT(f_j, A, metric);
+            if (!proj.isZero()) {
+                meet = meet ^ proj;
+                if (get_grade(meet) == t) {
+                    join = RCONT(A, INV(meet, metric), metric)^B;
+                    continue;
+                }
+            }
+            auto rej = ORTHO_REJECT(f_j, A, metric);
+            if (!rej.isZero()) {
+                join = LCONT(rej, join, metric);
+                if (get_grade(join) == (r+s-t)) {
+                    meet = UNDUAL(DUAL(B, metric) ^ DUAL(A, metric), metric);
+                    continue;
+                }
+            }
+        }
+
+        if (r > s) {
+            output[0] = meet * pow(-1, (r-t)*(s-t));
+            output[1] = join * pow(-1, (r-t)*(s-t));
+        } else {
+            output[0] = meet;
+            output[1] = join;
+        }
+        return output;
     }
 }
 
