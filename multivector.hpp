@@ -17,6 +17,12 @@ namespace CliffLib {
 
     static int N_DIMS = -1;
 
+    enum multivector_type {
+        BLADE = 0,
+        VERSOR = 1,
+        NO_MEANING = 2
+    };
+
     typedef std::bitset<MAX_BITS> mask;
 
     template<std::size_t N>
@@ -59,7 +65,7 @@ namespace CliffLib {
             template<class T> friend T SQR_NORM_REVERSE(const multivector<T> &, Metric<T> &);
 
             template<class T> friend std::ostream& operator << (std::ostream &, const multivector<T> &);
-
+            template<class T, class U> friend bool operator == (const multivector<T> &, const multivector<U> &);
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> operator + (const multivector<T> &, const multivector<U> &);
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> operator - (const multivector<T> &, const multivector<U> &);
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> operator * (const T &, const multivector<U> &);
@@ -97,6 +103,39 @@ namespace CliffLib {
                 return true;
             }
 
+            multivector_type get_type(Metric<coeff_type> &metric) {
+                auto grade_preserving = [] (const multivector<coeff_type> &involution, const multivector<coeff_type> &inverse, Metric<coeff_type> &metric) {
+                    for (int i = 1; i <= N_DIMS; i++) {
+                        mask masc(1 << i);
+                        multivector<coeff_type> m;
+                        m.M[masc] = 1;
+                        if (get_grade(GP(GP(involution, m, metric), inverse, metric)) != 1) {
+                            return false;
+                        }
+                    }
+                    return true;
+                };
+
+                multivector<coeff_type> involution = GRADE_INVOL(*this);
+                multivector<coeff_type> inverse = INV(*this, metric);
+
+                multivector<coeff_type> m = GP(involution, inverse, metric);
+
+                if (get_grade(m) == 0 && m == GP(INV(*this, metric), GRADE_INVOL(*this), metric)) {
+                    if (grade_preserving(involution, inverse, metric)) {
+                        if (get_grade(*this) != -1) {
+                            return BLADE;
+                        } else {
+                            return VERSOR;
+                        }
+                    } else {
+                        return NO_MEANING;
+                    }
+                } else {
+                    return NO_MEANING;
+                }
+            }
+
 
     };
 
@@ -132,7 +171,6 @@ namespace CliffLib {
         return I;
     }
 
-
     template<class T>
     std::ostream& operator << (std::ostream &os, const multivector<T> &m) {
         for (auto it = m.M.begin(); it != m.M.end(); ++it) {
@@ -140,6 +178,26 @@ namespace CliffLib {
         }
         return os;
     }
+
+    template<class T, class U>
+    bool operator == (const multivector<T> &m1, const multivector<U> &m2) {
+        auto it1 = m1.M.begin();
+        auto it2 = m2.M.begin();
+        while (it1 != m1.M.end() || it2 != m2.M.end()) {
+            if (it1->first != it2->first || it1->second != it2->second) {
+                return false;
+            }
+            ++it1;
+            ++it2;
+        }
+        if (it1 == m1.M.end() && it2 != m2.M.end()) {
+            return false;
+        } else if (it2 == m2.M.end() && it1 != m1.M.end()) {
+            return false;
+        }
+        return true;
+    }
+
 
     template<class T = double>
     multivector<T> scalar(T value) {
@@ -403,6 +461,11 @@ namespace CliffLib {
         return RCONT((m1^m2), INV(m2, metric), metric);
     }
 
+    template<class T>
+    multivector<T> GRADE_INVOL(const multivector<T> &m) {
+        //assert
+        return pow(-1, get_grade(m)) * m;
+    }
 
     template<class T>
     std::vector<multivector<T>> FACTORIZE(const multivector<T> &m, Metric<T> &metric, T &scaling) {
