@@ -17,21 +17,31 @@ int main() {
      *
      **/
 
-    CliffLib::N_DIMS = 5;
+    CliffLib::N_DIMS = 4;
 
     OrthonormalMetric<double> m;
-    multivector<double> k1 = 5 + 2*(e(2)^e(3)) + 4*(e(1)^e(2)) + 0.5*(e(3)^e(1));
-    multivector<double> k2 = e(1)^e(2)^e(3);
-    cout << k1 << endl;
-    cout << k1.get_type(m) << endl;
+    multivector<double> multivec = GP(e(1)^e(2), e(2)^e(4), m);
+//    double k;
+//    for (auto f : FACTORIZE(multivec, m, k)) {
+//        cout << f << endl;
+//    }
+    cout << multivec << endl;
+    cout << multivec.get_type(m) << endl;
+
+//    multivector<double> multivec = GP((e(1)^e(2))+(e(1)^e(3)), (e(1)^e(2)) +(e(1)^e(3)) , m);
+//    cout << multivec << endl;
+
+//    cout << k1 << endl;
+//    cout << k1.get_type(m) << endl;
 //    double scaling;
-//    std::vector<multivector<double>> k = FACTORIZE(((10*e(1)^e(2)^e(5))+(3*e(1)^e(3)^e(5))+(4*(e(5)^e(3)^e(2)))), m, scaling);
-//    multivector<double> check = scaling * k[0];
+//    std::vector<multivector<double>> k = FACTORIZE(((3*e(1)^e(2))+(4*e(1)^e(3))), m, scaling);
+//    cout << scaling << endl;
+//    multivector<double> check = SCALAR<double>();
 //    for (int i = 0; i < k.size(); i++) {
-//        cout << scaling * k[i] << endl;
-//        if (i >= 1) {
-//            check = check ^ (scaling * k[i]);
-//        }
+//        cout << k[i] << endl;
+////        if (i > 0) {
+//        check = check ^ k[i];
+////        }
 //    }
 
 //    cout << scaling * check << endl;

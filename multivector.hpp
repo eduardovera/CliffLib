@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <vector>
 
+#define TOLERANCE 0.0001
+
 #define MAX_BITS 20
 
 namespace CliffLib {
@@ -61,8 +63,8 @@ namespace CliffLib {
             template<class T> friend multivector<T> take_grade(const multivector<T> &, const int);
             template<class T> friend int get_grade(const multivector<T> &);
             template<class T> friend multivector<T> REVERSE(const multivector<T> &);
-            template<class T> friend multivector<T> INV(const multivector<T> &, Metric<T> &);
-            template<class T> friend T SQR_NORM_REVERSE(const multivector<T> &, Metric<T> &);
+            template<class T> friend multivector<T> INV(const multivector<T> &, Metric<double> &);
+            template<class T> friend T SQR_NORM_REVERSE(const multivector<T> &, Metric<double> &);
 
             template<class T> friend std::ostream& operator << (std::ostream &, const multivector<T> &);
             template<class T, class U> friend bool operator == (const multivector<T> &, const multivector<U> &);
@@ -81,12 +83,12 @@ namespace CliffLib {
             template<class T, class U> friend multivector<typename std::common_type<T, U>::type> DELTA (const multivector<T> &, const multivector<U> &, Metric<typename std::common_type<T, U>::type> &);
             template<class T, class U> friend typename std::common_type<T, U>::type  SCP (const multivector<T> &, const multivector<U> &, Metric<typename std::common_type<T, U>::type> &);
 
-            template<class T> friend std::vector<multivector<T>> FACTORIZE(const multivector<T> &, Metric<T> &, T &);
+            template<class T> friend std::vector<multivector<T>> FACTORIZE(const multivector<T> &, Metric<double> &, double &);
 
-            template<class T> friend multivector<T> DUAL(const multivector<T> &, Metric<T> &);
+            template<class T> friend multivector<T> DUAL(const multivector<T> &, Metric<double> &);
             template<class T, class U> friend multivector<T> DUAL(const multivector<T> &, const multivector<U> &, Metric<Metric<typename std::common_type<T, U>::type>> &);
 
-            template<class T> friend multivector<T> UNDUAL(const multivector<T> &, Metric<T> &);
+            template<class T> friend multivector<T> UNDUAL(const multivector<T> &, Metric<double> &);
             template<class T, class U> friend multivector<T> UNDUAL(const multivector<T> &, const multivector<U> &, Metric<Metric<typename std::common_type<T, U>::type>> &);
 
             template<class T, class U> friend std::vector<multivector<typename std::common_type<T, U>::type>> MEET_AND_JOIN(const multivector<T> &, const multivector<U> &, int, Metric<typename std::common_type<T, U>::type> &);
@@ -94,7 +96,7 @@ namespace CliffLib {
             template<class T> friend multivector<T> PSEUDOSCALAR();
             template<class T> friend multivector<T> SCALAR();
 
-            bool isZero() {
+            bool isZero() const {
                 for (auto it = M.begin(); it != M.end(); ++it) {
                     if (it->second != 0) {
                         return false;
@@ -104,12 +106,14 @@ namespace CliffLib {
             }
 
             multivector_type get_type(Metric<coeff_type> &metric) {
-                auto grade_preserving = [] (const multivector<coeff_type> &involution, const multivector<coeff_type> &inverse, Metric<coeff_type> &metric) {
+                auto grade_preserving = [] (const multivector<coeff_type> &involution, const multivector<coeff_type> &reverse, Metric<coeff_type> &metric) {
                     for (int i = 1; i <= N_DIMS; i++) {
                         mask masc(1 << i);
-                        multivector<coeff_type> m;
-                        m.M[masc] = 1;
-                        if (get_grade(GP(GP(involution, m, metric), inverse, metric)) != 1) {
+                        multivector<coeff_type> e_;
+                        e_.M[masc] = 1;
+                        std::cout << e_ << std::endl;
+//                        auto K = GP(GP(involution, e_, metric), reverse, metric);
+                        if (get_grade(GP(GP(involution, e_, metric), reverse, metric)) != 1) {
                             return false;
                         }
                     }
@@ -121,8 +125,8 @@ namespace CliffLib {
 
                 multivector<coeff_type> m = GP(involution, inverse, metric);
 
-                if (get_grade(m) == 0 && m == GP(INV(*this, metric), GRADE_INVOL(*this), metric)) {
-                    if (grade_preserving(involution, inverse, metric)) {
+                if (get_grade(m) == 0 && m == GP(inverse, involution, metric)) {
+                    if (grade_preserving(involution, REVERSE(*this), metric)) {
                         if (get_grade(*this) != -1) {
                             return BLADE;
                         } else {
@@ -141,10 +145,13 @@ namespace CliffLib {
 
     template<class T>
     int get_grade(const multivector<T> &m) {
+        if (m.isZero()) {
+            return 0;
+        }
         auto it = m.M.begin();
         int grade = it->first.count();
         while (it != m.M.end()) {
-            if ((int)it->first.count() != grade) {
+            if (std::fabs(it->second) > TOLERANCE && (int)it->first.count() != grade) {
                 return -1;
             }
             ++it;
@@ -166,9 +173,9 @@ namespace CliffLib {
     template<class T>
     multivector<T> SCALAR() {
         mask masc(0);
-        multivector<T> I;
-        I.M[masc] = 1;
-        return I;
+        multivector<T> s;
+        s.M[masc] = 1;
+        return s;
     }
 
     template<class T>
@@ -297,9 +304,17 @@ namespace CliffLib {
     template<class T, class U>
     multivector<typename std::common_type<T, U>::type> generic_call (const multivector<T> &m1, const multivector<U> &m2, auto f ) {
         multivector<typename std::common_type<T, U>::type> result;
+        multivector<typename std::common_type<T, U>::type> partial;
         for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
             for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-                result = result + f(it1->second, it1->first, it2->second, it2->first);
+                partial = f(it1->second, it1->first, it2->second, it2->first);
+                    result = result + partial;
+            }
+        }
+
+        for (auto it = result.M.begin(); it != result.M.end(); ++it) {
+            if (std::fabs(it->second) < TOLERANCE) {
+                result.M.erase(it->second);
             }
         }
         return result;
@@ -409,28 +424,23 @@ namespace CliffLib {
     multivector<T> REVERSE(const multivector<T> &m) {
         // assert that m is a blade
         multivector<T> multivector_r;
-        auto it = m.M.begin();
         int g = get_grade(m);
-        int ex = ((int)(g * (g-1))) >> 1;
-        multivector_r.M[it->first] = std::pow(-1, ex) * m.M.at(it->first);
+        int ex = (g * (g-1)) >> 1 ;
+        multivector_r = std::pow(-1, ex) * m;
         return multivector_r;
     }
 
     template<class T>
-    T SQR_NORM_REVERSE(const multivector<T> &m, Metric<T> &metric) {
+    T SQR_NORM_REVERSE(const multivector<T> &m, Metric<double> &metric) {
         // assert that m is a blade
         return SCP(m, REVERSE(m), metric);
     }
 
     template<class T>
-    multivector<T> INV(const multivector<T> &m, Metric<T> &metric) {
+    multivector<T> INV(const multivector<T> &m, Metric<double> &metric) {
         // assert that m is a blade
-        multivector<T> multivector_r;
-        multivector<T> temp = REVERSE(m);
-        T norm = SQR_NORM_REVERSE(m, metric);
-        auto it = temp.M.begin();
-        multivector_r.M[it->first] = it->second / norm;
-        return multivector_r;
+        double inv_norm = 1.0 / SQR_NORM_REVERSE(m, metric);
+        return (REVERSE(m) * inv_norm);
     }
 
     template<class T, class U>
@@ -452,12 +462,12 @@ namespace CliffLib {
     }
 
     template<class T, class U>
-    multivector<T> ORTHO_PROJECT(const multivector<T> &m1, const multivector<U> &m2, Metric<T> &metric) {
+    multivector<T> ORTHO_PROJECT(const multivector<T> &m1, const multivector<U> &m2, Metric<double> &metric) {
         return LCONT(LCONT(m1, INV(m2, metric), metric), m2, metric);
     }
 
     template<class T, class U>
-    multivector<T> ORTHO_REJECT(const multivector<T> &m1, const multivector<U> &m2, Metric<T> &metric) {
+    multivector<T> ORTHO_REJECT(const multivector<T> &m1, const multivector<U> &m2, Metric<double> &metric) {
         return RCONT((m1^m2), INV(m2, metric), metric);
     }
 
@@ -468,7 +478,7 @@ namespace CliffLib {
     }
 
     template<class T>
-    std::vector<multivector<T>> FACTORIZE(const multivector<T> &m, Metric<T> &metric, T &scaling) {
+    std::vector<multivector<T>> FACTORIZE(const multivector<T> &m, Metric<double> &metric, double &scaling) {
         // assert it is a blade
         scaling = sqrt(SQR_NORM_REVERSE(m, metric));
         double inv_scaling = 1.0 / scaling;
@@ -494,7 +504,7 @@ namespace CliffLib {
                 e_j.M[1 << i] = 1;
 
                 multivector<T> proj = ORTHO_PROJECT(e_j, temp, metric);
-                multivector<T> factor_j = proj * inv_scaling;
+                multivector<T> factor_j = proj * (1.0 / sqrt(SQR_NORM_REVERSE(proj, metric)));
                 r.push_back(factor_j);
                 temp = LCONT(INV(factor_j, metric), temp, metric);
             }
@@ -504,7 +514,7 @@ namespace CliffLib {
     }
 
     template<class T>
-    multivector<T> DUAL(const multivector<T> &m, Metric<T> &metric) {
+    multivector<T> DUAL(const multivector<T> &m, Metric<double> &metric) {
         return LCONT(m, INV(PSEUDOSCALAR<T>(), metric), metric);
     }
 
@@ -514,7 +524,7 @@ namespace CliffLib {
     }
 
     template<class T>
-    multivector<T> UNDUAL(const multivector<T> &m, Metric<T> &metric) {
+    multivector<T> UNDUAL(const multivector<T> &m, Metric<double> &metric) {
         return LCONT(m, PSEUDOSCALAR<T>(), metric);
     }
 
