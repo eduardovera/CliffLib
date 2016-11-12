@@ -10,6 +10,7 @@
 #include <functional>
 #include <stdexcept>
 #include <vector>
+#include <assert.h>
 
 #define TOLERANCE 0.0001
 
@@ -96,6 +97,8 @@ namespace CliffLib {
             template<class T> friend multivector<T> PSEUDOSCALAR();
             template<class T> friend multivector<T> SCALAR();
 
+            template<class T> friend multivector<T> GRADE_INVOL(const multivector<T> &m);
+
             bool isZero() const {
                 for (auto it = M.begin(); it != M.end(); ++it) {
                     if (it->second != 0) {
@@ -105,15 +108,28 @@ namespace CliffLib {
                 return true;
             }
 
-            multivector_type get_type(Metric<coeff_type> &metric) {
+            void handle_numeric_error() {
+                for (auto it = this->M.begin(); it != this->M.end(); ++it) {
+                    if (std::abs(it->second) < TOLERANCE) {
+                        this->M.erase(it);
+                    }
+                }
+            }
+
+            multivector_type get_type(Metric<coeff_type> &metric) const {
+                if (SQR_NORM_REVERSE(*this, metric) < TOLERANCE) {
+                    return NO_MEANING;
+                }
                 auto grade_preserving = [] (const multivector<coeff_type> &involution, const multivector<coeff_type> &reverse, Metric<coeff_type> &metric) {
                     for (int i = 1; i <= N_DIMS; i++) {
                         mask masc(1 << i);
                         multivector<coeff_type> e_;
                         e_.M[masc] = 1;
-                        std::cout << e_ << std::endl;
-//                        auto K = GP(GP(involution, e_, metric), reverse, metric);
-                        if (get_grade(GP(GP(involution, e_, metric), reverse, metric)) != 1) {
+                        std::cout << "e_" << i << ": " << e_ << std::endl;
+                        multivector<coeff_type> M = GP(GP(involution, e_, metric), reverse, metric);
+                        M.handle_numeric_error();
+                        std::cout << "M: " << M << std::endl;
+                        if (get_grade(M) != 1) {
                             return false;
                         }
                     }
@@ -124,8 +140,17 @@ namespace CliffLib {
                 multivector<coeff_type> inverse = INV(*this, metric);
 
                 multivector<coeff_type> m = GP(involution, inverse, metric);
+                m.handle_numeric_error();
+                multivector<coeff_type> diff = m - (GP(inverse, involution, metric));
+                diff.handle_numeric_error();
 
-                if (get_grade(m) == 0 && m == GP(inverse, involution, metric)) {
+                std::cout << "m: " << m << std::endl;
+                std::cout << "diff: " << diff << std::endl;
+                std::cout << "grade(m): " << get_grade(m) << std::endl;
+                std::cout << "diff is zero? " << diff.isZero() << std::endl;
+
+
+                if (get_grade(m) == 0 && diff.isZero()) {
                     if (grade_preserving(involution, REVERSE(*this), metric)) {
                         if (get_grade(*this) != -1) {
                             return BLADE;
@@ -151,7 +176,7 @@ namespace CliffLib {
         auto it = m.M.begin();
         int grade = it->first.count();
         while (it != m.M.end()) {
-            if (std::fabs(it->second) > TOLERANCE && (int)it->first.count() != grade) {
+            if ((int)it->first.count() != grade) {
                 return -1;
             }
             ++it;
@@ -432,14 +457,16 @@ namespace CliffLib {
 
     template<class T>
     T SQR_NORM_REVERSE(const multivector<T> &m, Metric<double> &metric) {
-        // assert that m is a blade
         return SCP(m, REVERSE(m), metric);
     }
 
     template<class T>
     multivector<T> INV(const multivector<T> &m, Metric<double> &metric) {
-        // assert that m is a blade
-        double inv_norm = 1.0 / SQR_NORM_REVERSE(m, metric);
+        double norm = SQR_NORM_REVERSE(m, metric);
+        if (norm <= TOLERANCE) {
+            throw std::invalid_argument("Multivector not invertible");
+        }
+        double inv_norm = 1.0 / norm;
         return (REVERSE(m) * inv_norm);
     }
 
@@ -473,13 +500,15 @@ namespace CliffLib {
 
     template<class T>
     multivector<T> GRADE_INVOL(const multivector<T> &m) {
-        //assert
-        return pow(-1, get_grade(m)) * m;
+        multivector<T> invol = m;
+        for (auto it = invol.M.begin(); it != invol.M.end(); ++it) {
+            invol.M[it->first] = pow(-1, it->first.count()) * it->second;
+        }
+        return invol;
     }
 
     template<class T>
     std::vector<multivector<T>> FACTORIZE(const multivector<T> &m, Metric<double> &metric, double &scaling) {
-        // assert it is a blade
         scaling = sqrt(SQR_NORM_REVERSE(m, metric));
         double inv_scaling = 1.0 / scaling;
 
@@ -535,7 +564,8 @@ namespace CliffLib {
 
     template<class T, class U>
     std::vector<multivector<typename std::common_type<T, U>::type>> MEET_AND_JOIN(const multivector<T> &m1, const multivector<U> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
-
+        assert(m1.get_type(metric) == BLADE);
+        assert(m2.get_type(metric) == BLADE);
         std::vector<multivector<typename std::common_type<T, U>::type>> output(2);
 
         multivector<T> A = m1;
@@ -586,9 +616,5 @@ namespace CliffLib {
         return output;
     }
 }
-
-
-
-
 
 #endif // MULTIVECTOR_H

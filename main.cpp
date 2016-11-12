@@ -20,13 +20,15 @@ int main() {
     CliffLib::N_DIMS = 4;
 
     OrthonormalMetric<double> m;
-    multivector<double> multivec = GP(e(1)^e(2), e(2)^e(4), m);
+    multivector<double> multivec = DUAL((e(1)^e(2)) + (e(1)^e(3)), m);
 //    double k;
+//    MEET_AND_JOIN(multivec, multivec, m);
+//    FACTORIZE(multivec, m, k);
 //    for (auto f : FACTORIZE(multivec, m, k)) {
 //        cout << f << endl;
 //    }
     cout << multivec << endl;
-    cout << multivec.get_type(m) << endl;
+//    cout << multivec.get_type(m) << endl;
 
 //    multivector<double> multivec = GP((e(1)^e(2))+(e(1)^e(3)), (e(1)^e(2)) +(e(1)^e(3)) , m);
 //    cout << multivec << endl;
