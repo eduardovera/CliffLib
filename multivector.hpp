@@ -12,9 +12,9 @@
 #include <vector>
 #include <assert.h>
 
-#define TOLERANCE 0.0001
+#define TOLERANCE 0.00001
 
-#define MAX_BITS 20
+#define MAX_BITS 100000
 
 namespace CliffLib {
 
@@ -249,7 +249,8 @@ namespace CliffLib {
             std::string message = "Can't represent e(" + std::to_string(index) + ") with this amount of bits. Please select a higher value for MAX_BITS param by using #define MAX_BITS directive before including multivector.hpp";
             throw std::invalid_argument(message);
         }
-        r.M[mask(1 << index)] = 1;
+        mask k(1);
+        r.M[k << index] = 1;
         return r;
     }
 
@@ -337,11 +338,7 @@ namespace CliffLib {
             }
         }
 
-        for (auto it = result.M.begin(); it != result.M.end(); ++it) {
-            if (std::fabs(it->second) < TOLERANCE) {
-                result.M.erase(it->second);
-            }
-        }
+        result.handle_numeric_error();
         return result;
     }
 
@@ -400,7 +397,7 @@ namespace CliffLib {
         auto GP = [&] (const T coef1, mask mask1, const U coef2, mask mask2) {
             multivector<typename std::common_type<T, U>::type> multivector_r;
             mask mask_r = mask1 ^ mask2;
-            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ullong()) * coef1 * coef2;
+            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factorByMask((mask1 & mask2), (mask1 & mask2)) * coef1 * coef2;
             return multivector_r;
         };
         return generic_call(m1, m2, GP);
@@ -447,11 +444,12 @@ namespace CliffLib {
 
     template<class T>
     multivector<T> REVERSE(const multivector<T> &m) {
-        // assert that m is a blade
         multivector<T> multivector_r;
-        int g = get_grade(m);
-        int ex = (g * (g-1)) >> 1 ;
-        multivector_r = std::pow(-1, ex) * m;
+        for (auto it = m.M.begin(); it != m.M.end(); ++it) {
+            int g = it->first.count();
+            int ex = (g * (g-1)) >> 1 ;
+            multivector_r.M[it->first] = std::pow(-1, ex) * it->second;
+        }
         return multivector_r;
     }
 
@@ -463,16 +461,19 @@ namespace CliffLib {
     template<class T>
     multivector<T> INV(const multivector<T> &m, Metric<double> &metric) {
         double norm = SQR_NORM_REVERSE(m, metric);
-        if (norm <= TOLERANCE) {
+        if (std::abs(norm) < TOLERANCE) {
             throw std::invalid_argument("Multivector not invertible");
         }
         double inv_norm = 1.0 / norm;
-        return (REVERSE(m) * inv_norm);
+        multivector<T> r = (REVERSE(m) * inv_norm);
+        r.handle_numeric_error();
+        return r;
     }
 
     template<class T, class U>
     multivector<typename std::common_type<T, U>::type> IGP(const multivector<T> &m1, const multivector<U> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
         multivector<typename std::common_type<T, U>::type> multivector_r = GP(m1, INV(m2, metric), metric);
+        multivector_r.handle_numeric_error();
         return multivector_r;
     }
 

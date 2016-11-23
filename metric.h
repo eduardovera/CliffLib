@@ -6,7 +6,10 @@
 template<class T>
 class Metric {
     public:
-        virtual T factor(int i, int j) = 0;
+        virtual T factor(long long i, long long j) = 0;
+        T factorByMask (auto i, auto j) {
+            return 1;
+        }
 };
 
 template<class T>
@@ -20,9 +23,14 @@ class NonOrthogonalMetric : public Metric<T> {
         NonOrthogonalMetric(std::vector<std::vector<T>> Q){
             this->Q = Q;
         }
-        T factor(int i, int j){
+        T factor(long long i, long long j){
             return Q[i][j];
         }
+
+        T factorByMask (auto i, auto j) {
+            return 1;
+        }
+
 };
 
 
@@ -38,12 +46,18 @@ class OrthogonalMetric : public Metric<T> {
             this->d = d;
         }
 
-        T factor (int i, int j) {
+        T factor (long long i, long long j) {
             if (i == j) {
                 return d[i];
             }
             return 0;
         }
+
+        T factorByMask (auto i, auto j) {
+            return i == j;
+        }
+
+
 };
 
 template<class T>
@@ -52,7 +66,11 @@ class OrthonormalMetric : public OrthogonalMetric<T> {
     public :
         OrthonormalMetric() {}
 
-        T factor (int i, int j) {
+        T factor (long long i, long long j) {
+            return i == j;
+        }
+
+        T factorByMask (auto i, auto j) {
             return i == j;
         }
 };
