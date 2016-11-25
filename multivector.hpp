@@ -14,7 +14,21 @@
 
 #define TOLERANCE 0.00001
 
-#define MAX_BITS 100000
+#define MAX_BITS 730
+
+bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
+    for (int i = MAX_BITS - 1; i >= 0; i--) {
+        if (a[i] ^ b[i]) {
+            return b[i];
+        }
+    }
+    return false;
+}
+
+bool operator >(const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
+    return ! (a < b);
+}
+
 
 namespace CliffLib {
 
@@ -31,10 +45,12 @@ namespace CliffLib {
     template<std::size_t N>
     struct Comparer {
         bool operator () (const std::bitset<N> &x, const std::bitset<N> &y) const {
-            return x.to_ullong() < y.to_ullong();
+            for (int i = N-1; i >= 0; i--) {
+                if (x[i] ^ y[i]) return y[i];
+            }
+            return false;
         }
     };
-
 
     template<class coeff_type>
     class multivector {
@@ -265,10 +281,10 @@ namespace CliffLib {
         auto it1 = m1.M.begin();
         auto it2 = m2.M.begin();
         while (it1 != m1.M.end() && it2 != m2.M.end()) {
-            if (it1->first.to_ullong() < it2->first.to_ullong()) {
+            if (it1->first < it2->first) {
                 multivector_r.M[it1->first] = it1->second;
                 it1++;
-            } else if (it1->first.to_ullong() > it2->first.to_ullong()) {
+            } else if (it1->first > it2->first) {
                 multivector_r.M[it2->first] = it2->second;
                 it2++;
             } else {

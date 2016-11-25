@@ -9,4 +9,4 @@ HEADERS += \
 
 
 SOURCES += main.cpp
-LIBS += -ldlib
+LIBS += -L/usr/local/lib -ldlib
