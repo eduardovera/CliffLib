@@ -10,6 +10,7 @@ class Metric {
         T factorByMask (auto i, auto j) {
             return 1;
         }
+
 };
 
 template<class T>

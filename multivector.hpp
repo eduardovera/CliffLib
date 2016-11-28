@@ -15,7 +15,7 @@
 
 #define TOLERANCE 0.00001
 
-#define MAX_BITS 730
+#define MAX_BITS 401
 
 bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
 //    size_t b_first = b._Find_first();
@@ -115,6 +115,10 @@ namespace CliffLib {
         public:
 
             std::map<mask, coeff_type, Comparer<MAX_BITS>> M;
+
+            coeff_type getCoeff() {
+                return M.begin()->second;
+            }
 
             std::string get_base(std::bitset<MAX_BITS> m) const {
                 std::string ret = "";
@@ -407,11 +411,7 @@ namespace CliffLib {
         multivector<typename std::common_type<T, U>::type> t2;
         for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
             for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-                t1.M[it1->first] = 1;
-                t2.M[it2->first] = 1;
-                partial = LOOKUP_TABLE[t1][t2]/* * it1->second * it2->second*/;
-
-//                partial = f(it1->second, it1->first, it2->second, it2->first);
+                partial = f(it1->second, it1->first, it2->second, it2->first);
                 result = result + partial;
             }
         }
@@ -486,9 +486,10 @@ namespace CliffLib {
     typename std::common_type<T, U>::type  SCP (const multivector<T> &m1, const multivector<U> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
         auto SCP = [&] (const T coef1, mask mask1, const U coef2, mask mask2) {
             multivector<typename std::common_type<T, U>::type> multivector_r;
-            mask mask_r = mask1 ^ mask2;
-            if (mask_r.count() == 0) {
-                multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factor((mask1 & mask2).to_ullong(), (mask1 & mask2).to_ullong()) * coef1 * coef2;
+            mask mask_and = mask1 & mask2;
+            mask mask_xor = mask1 ^ mask2;
+            if (mask_xor.count() == 0) {
+                multivector_r.M[mask_xor] = canonical_sort(mask1, mask2) * metric.factorByMask(mask_and, mask_and) * coef1 * coef2;
             }
             return multivector_r;
         };
@@ -709,7 +710,7 @@ namespace CliffLib {
         };
         LOOKUP_TABLE = std::vector<std::vector<multivector<double>>>(N_DIMS + 1);
 
-        #pragma omp parallel for
+//        #pragma omp parallel for
         for (int j = 1; j <= N_DIMS; j++) {
             LOOKUP_TABLE[j].reserve(N_DIMS + 1);
             for (int i = 1; i <= N_DIMS; i++) {
@@ -724,6 +725,7 @@ namespace CliffLib {
         if (N_DIMS == -1) {
             throw std::invalid_argument("Please define the dimensionality of your subspace by setting CliffLib::N_DIMS param.");
         }
+        #pragma omp parallel for
         for (int i = 0; i <= N_DIMS; i++) {
             MASKS[i] = e(i);
         }
