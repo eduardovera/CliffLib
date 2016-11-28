@@ -1,8 +1,10 @@
+#include <omp.h>
 #include <iostream>
 #include "multivector.hpp"
 #include <dlib/image_io.h>
 #include <dlib/external/libpng/png.h>
 
+#include <chrono>
 using namespace std;
 
 using namespace CliffLib;
@@ -13,7 +15,7 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, c
     dims.set_size(I.nr(), I.nc());
     for (int j = 0, z = 1; j < I.nr(); j++) {
         for (int i = 0; i < I.nc(); i++, z++) {
-            dims[i][j] = e(z);
+            dims[i][j] = MASKS[z];
 //            cout << dims[i][j] << endl;
         }
     }
@@ -23,6 +25,7 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, c
 
     int k_size = K.nc() >> 1;
 
+    #pragma omp parallel for
     for (int j = 0; j < I.nr(); j++) {
         for (int i = 0; i < I.nc(); i++) {
             multivector<double> I_temp = SCALAR<double>();
@@ -59,16 +62,24 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, c
 
 int main() {
 
-    CliffLib::N_DIMS = 10000;
+    CliffLib::N_DIMS = 729;
+
+    CliffLib::build_masks();
+    auto s_start = std::chrono::high_resolution_clock::now();
+    CliffLib::build_lookup_table(OrthonormalMetric<double>());
+    auto s_end = std::chrono::high_resolution_clock::now();
+    auto s_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(s_end - s_start).count()/1000.0;
+
+    cout << "BUILD TIME: " << s_elapsed << endl;
 
     dlib::array2d<double> img;
     dlib::load_png(img, "/home/eduardovera/Workspace/CliffLib/6.png");
 
     dlib::array2d<double> prewitt_operator_X;
-    dlib::array2d<double> prewitt_operator_Y;
+//    dlib::array2d<double> prewitt_operator_Y;
 
     prewitt_operator_X.set_size(3, 3);
-    prewitt_operator_Y.set_size(3, 3);
+//    prewitt_operator_Y.set_size(3, 3);
 
     prewitt_operator_X[0][0] = -1;
     prewitt_operator_X[1][0] = -1;
@@ -77,15 +88,20 @@ int main() {
     prewitt_operator_X[1][2] = +1;
     prewitt_operator_X[2][2] = +1;
 
-    prewitt_operator_Y[0][0] = -1;
-    prewitt_operator_Y[0][1] = -1;
-    prewitt_operator_Y[0][2] = -1;
-    prewitt_operator_Y[2][0] = +1;
-    prewitt_operator_Y[2][1] = +1;
-    prewitt_operator_Y[2][2] = +1;
+//    prewitt_operator_Y[0][0] = -1;
+//    prewitt_operator_Y[0][1] = -1;
+//    prewitt_operator_Y[0][2] = -1;
+//    prewitt_operator_Y[2][0] = +1;
+//    prewitt_operator_Y[2][1] = +1;
+//    prewitt_operator_Y[2][2] = +1;
 
+
+//    cout << CliffLib::LOOKUP_TABLE[123][567] << endl;
+
+    cout << "Done!" << endl;
     dlib::array2d<multivector<double>> Gx = convolution(img, prewitt_operator_X);
 //    dlib::array2d<multivector<double>> Gy = convolution(img, prewitt_operator_Y);
+    cout << "Done!" << endl;
 
 }
 

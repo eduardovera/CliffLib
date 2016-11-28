@@ -11,18 +11,36 @@
 #include <stdexcept>
 #include <vector>
 #include <assert.h>
+#include <string>
 
 #define TOLERANCE 0.00001
 
 #define MAX_BITS 730
 
 bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
-    for (int i = MAX_BITS - 1; i >= 0; i--) {
-        if (a[i] ^ b[i]) {
-            return b[i];
+//    size_t b_first = b._Find_first();
+
+//    return (a._Find_first() < b_first) && (b_first != b.size());
+
+    std::bitset<MAX_BITS> a_c = a;
+    std::bitset<MAX_BITS> b_c = b;
+
+    for (int i = 0; i <= MAX_BITS; i++) {
+        if (a_c.test(i)) {
+            a_c.flip(i);
+        }
+        if (b_c.test(i)) {
+            b_c.flip(i);
+        }
+        if (a_c.count() == 0 && b_c.count() != 0) {
+            return true;
+        }
+        if (b_c.count() == 0) {
+            return false;
         }
     }
-    return false;
+
+//    return a.to_string().compare(b.to_string()) < 0;
 }
 
 bool operator >(const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
@@ -32,7 +50,14 @@ bool operator >(const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) 
 
 namespace CliffLib {
 
+    template<class coeff_type>
+    class multivector;
+    typedef std::bitset<MAX_BITS> mask;
+    static void build_masks();
+
     static int N_DIMS = -1;
+    static std::vector<std::vector<multivector<double>>> LOOKUP_TABLE;
+    static std::map<int, multivector<double>> MASKS;
 
     enum multivector_type {
         BLADE = 0,
@@ -40,15 +65,45 @@ namespace CliffLib {
         NO_MEANING = 2
     };
 
-    typedef std::bitset<MAX_BITS> mask;
 
     template<std::size_t N>
     struct Comparer {
         bool operator () (const std::bitset<N> &x, const std::bitset<N> &y) const {
-            for (int i = N-1; i >= 0; i--) {
-                if (x[i] ^ y[i]) return y[i];
+
+
+
+//            return x.to_string().compare(y.to_string()) < 0;
+
+            std::bitset<MAX_BITS> a_c = x;
+            std::bitset<MAX_BITS> b_c = y;
+
+            for (int i = 0; i <= MAX_BITS; i++) {
+                if (a_c.test(i)) {
+                    a_c.flip(i);
+                }
+                if (b_c.test(i)) {
+                    b_c.flip(i);
+                }
+                if (a_c.count() == 0 && b_c.count() != 0) {
+                    return true;
+                }
+                if (b_c.count() == 0) {
+                    return false;
+                }
             }
-            return false;
+
+//            size_t y_first = y._Find_first();
+//            return (x._Find_first() < y_first) && (y_first != y.size());
+//            for (int i = N-1; i >= 0; i--) {
+//                if (x[i] ^ y[i]) return y[i];
+//            }
+//            std::cout << x._Find_first() << std::endl;
+//            std::cout << y._Find_first() << std::endl;
+
+//            std::cout << x << std::endl;
+//            std::cout << y << std::endl;
+
+//            return x.to_ullong() < y.to_ullong();
         }
     };
 
@@ -56,6 +111,9 @@ namespace CliffLib {
     class multivector {
 
         private:
+
+        public:
+
             std::map<mask, coeff_type, Comparer<MAX_BITS>> M;
 
             std::string get_base(std::bitset<MAX_BITS> m) const {
@@ -72,8 +130,6 @@ namespace CliffLib {
                 }
                 return ret;
             }
-
-        public:
 
             template<class T> friend multivector<T> e(int);
             template<class T> friend multivector<T> scalar(T);
@@ -260,11 +316,11 @@ namespace CliffLib {
         if (N_DIMS == -1) {
             throw std::invalid_argument("Please define the dimensionality of your subspace by setting CliffLib::N_DIMS param.");
         }
-        multivector<T> r;
         if (index >= MAX_BITS) {
             std::string message = "Can't represent e(" + std::to_string(index) + ") with this amount of bits. Please select a higher value for MAX_BITS param by using #define MAX_BITS directive before including multivector.hpp";
             throw std::invalid_argument(message);
         }
+        multivector<T> r;
         mask k(1);
         r.M[k << index] = 1;
         return r;
@@ -347,10 +403,16 @@ namespace CliffLib {
     multivector<typename std::common_type<T, U>::type> generic_call (const multivector<T> &m1, const multivector<U> &m2, auto f ) {
         multivector<typename std::common_type<T, U>::type> result;
         multivector<typename std::common_type<T, U>::type> partial;
+        multivector<typename std::common_type<T, U>::type> t1;
+        multivector<typename std::common_type<T, U>::type> t2;
         for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
             for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
-                partial = f(it1->second, it1->first, it2->second, it2->first);
-                    result = result + partial;
+                t1.M[it1->first] = 1;
+                t2.M[it2->first] = 1;
+                partial = LOOKUP_TABLE[t1][t2]/* * it1->second * it2->second*/;
+
+//                partial = f(it1->second, it1->first, it2->second, it2->first);
+                result = result + partial;
             }
         }
 
@@ -411,9 +473,10 @@ namespace CliffLib {
     template<class T, class U>
     multivector<typename std::common_type<T, U>::type> GP (const multivector<T> &m1, const multivector<U> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
         auto GP = [&] (const T coef1, mask mask1, const U coef2, mask mask2) {
+            mask mask_and = mask1 & mask2;
+            mask mask_xor = mask1 ^ mask2;
             multivector<typename std::common_type<T, U>::type> multivector_r;
-            mask mask_r = mask1 ^ mask2;
-            multivector_r.M[mask_r] = canonical_sort(mask1, mask2) * metric.factorByMask((mask1 & mask2), (mask1 & mask2)) * coef1 * coef2;
+            multivector_r.M[mask_xor] = canonical_sort(mask1, mask2) * metric.factorByMask((mask_and), (mask_and)) * coef1 * coef2;
             return multivector_r;
         };
         return generic_call(m1, m2, GP);
@@ -632,6 +695,40 @@ namespace CliffLib {
         }
         return output;
     }
+
+    static void build_lookup_table(OrthonormalMetric<double> m) {
+        if (N_DIMS == -1) {
+            throw std::invalid_argument("Please define the dimensionality of your subspace by setting CliffLib::N_DIMS param.");
+        }
+        auto GP_MOD = [&] (const double coef1, mask mask1, const double coef2, mask mask2) {
+            mask mask_and = mask1 & mask2;
+            mask mask_xor = mask1 ^ mask2;
+            multivector<double> multivector_r;
+            multivector_r.M[mask_xor] = mask1 < mask2 ? 1 : -1 * m.factorByMask((mask_and), (mask_and)) * coef1 * coef2;
+            return multivector_r;
+        };
+        LOOKUP_TABLE = std::vector<std::vector<multivector<double>>>(N_DIMS + 1);
+
+        #pragma omp parallel for
+        for (int j = 1; j <= N_DIMS; j++) {
+            LOOKUP_TABLE[j].reserve(N_DIMS + 1);
+            for (int i = 1; i <= N_DIMS; i++) {
+//                std::cout << MASKS[i] << " " << MASKS[j] << std::endl;
+                LOOKUP_TABLE[j][i] = generic_call(MASKS[i], MASKS[j], GP_MOD);
+            }
+        }
+    }
+
+//#pragma omp parallel num_threads(30)
+    static void build_masks() {
+        if (N_DIMS == -1) {
+            throw std::invalid_argument("Please define the dimensionality of your subspace by setting CliffLib::N_DIMS param.");
+        }
+        for (int i = 0; i <= N_DIMS; i++) {
+            MASKS[i] = e(i);
+        }
+    }
+
 }
 
 #endif // MULTIVECTOR_H
