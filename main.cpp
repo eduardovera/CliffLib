@@ -15,8 +15,7 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<unsigned char
     dims.set_size(I.nr(), I.nc());
     for (int j = 0, z = 1; j < I.nr(); j++) {
         for (int i = 0; i < I.nc(); i++, z++) {
-            dims[i][j] = MASKS[z];
-//            cout << dims[i][j] << endl;
+            dims[j][i] = MASKS[z];
         }
     }
 
@@ -25,13 +24,12 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<unsigned char
 
     int k_size = K.nc() >> 1;
 
-    double scale = 1.0/255.0;
+    double scale = 1.0;
 
-    int z = 0;
-    #pragma omp parallel for
+//    #pragma omp parallel for
     for (int j = 0; j < I.nr(); j++) {
         for (int i = 0; i < I.nc(); i++) {
-            multivector<double> I_temp;
+            multivector<double> I_temp/* = SCALAR<double>()*/;
             multivector<double> K_temp;
 //            std::cout << "I: " << I_temp << std::endl;
 //            std::cout << std::endl << "K: " << K_temp << std::endl;
@@ -42,21 +40,18 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<unsigned char
                     if (y < 0 || x < 0 || x >= I.nc() || y >= I.nr()) {
                         continue;
                     }
-//                    cout << "I(x, y): " << I[x][y] << endl;
-//                    cout << "dims(x, y): " << dims[x][y] << endl;
-//                    cout << "K(a, b): " << K[a][b] << endl;
-//                    cout << "a: " << a << endl;
-//                    cout << "b: " << b << endl;
-                    I_temp = I_temp + (scale * (I[x][y]) * dims[x][y]);
-                    K_temp = K_temp + (K[a][b] * dims[x][y]);
+                    I_temp = I_temp + (scale * ((I[y][x])) * dims[y][x]);
+                    K_temp = K_temp + (K[a][b] * dims[y][x]);
                 }
             }
-//            I_temp.handle_numeric_error();
-//            K_temp.handle_numeric_error();
+            I_temp.handle_numeric_error();
+            K_temp.handle_numeric_error();
 //            std::cout << "I: " << I_temp << std::endl;
 //            std::cout << std::endl << "K: " << K_temp << std::endl;
-            output[i][j] = GP(I_temp, K_temp, m);
-            output[i][j].handle_numeric_error();
+            output[j][i] = GP(I_temp, K_temp, m);
+            output[j][i].handle_numeric_error();
+//            std::cout << "output: " << output[j][i] << std::endl;
+//            getchar();
 //            cout << "Computed " << ++z << " elements" << endl;
         }
     }
@@ -111,10 +106,28 @@ int main() {
 
     OrthonormalMetric<double> m;
 
+    double min = numeric_limits<double>::infinity();
+    double max = -numeric_limits<double>::infinity();
+
+//    for (int j = 0; j < img.nr(); j++) {
+//        for (int i = 0; i < img.nc(); i++) {
+//            double g = (G[j][i]).getCoeff();
+//            if (g > max) {
+//                max = g;
+//            }
+//            if (g < min) {
+//                min = g;
+//            }
+//        }
+//    }
+
+//    double d = 1.0 / (max - min);
+
     for (int j = 0; j < img.nr(); j++) {
         for (int i = 0; i < img.nc(); i++) {
-            double g = (G[i][j]).getCoeff();
-            output[i][j] = (unsigned char)(255 * g);
+            double g = ((G[j][i]).getCoeff());
+
+            output[j][i] = (unsigned char)((255 * g) + 255);
         }
     }
 

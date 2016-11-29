@@ -70,10 +70,6 @@ namespace CliffLib {
     struct Comparer {
         bool operator () (const std::bitset<N> &x, const std::bitset<N> &y) const {
 
-
-
-//            return x.to_string().compare(y.to_string()) < 0;
-
             std::bitset<MAX_BITS> a_c = x;
             std::bitset<MAX_BITS> b_c = y;
 
@@ -117,7 +113,10 @@ namespace CliffLib {
             std::map<mask, coeff_type, Comparer<MAX_BITS>> M;
 
             coeff_type getCoeff() {
-                return M.begin()->second;
+                if (M.begin() == M.end()) {
+                    return 0;
+                }
+                return M[mask(0)];
             }
 
             std::string get_base(std::bitset<MAX_BITS> m) const {
@@ -725,7 +724,7 @@ namespace CliffLib {
         if (N_DIMS == -1) {
             throw std::invalid_argument("Please define the dimensionality of your subspace by setting CliffLib::N_DIMS param.");
         }
-        #pragma omp parallel for
+//        #pragma omp parallel for
         for (int i = 0; i <= N_DIMS; i++) {
             MASKS[i] = e(i);
         }
