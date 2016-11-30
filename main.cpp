@@ -24,41 +24,54 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, c
 
     int k_size = K.nc() >> 1;
 
-    double scale = 1.0;
-
-//    #pragma omp parallel for
     for (int j = 0; j < I.nr(); j++) {
         for (int i = 0; i < I.nc(); i++) {
-            multivector<double> I_temp/* = SCALAR<double>()*/;
+            multivector<double> I_temp;
             multivector<double> K_temp;
-//            std::cout << "I: " << I_temp << std::endl;
-//            std::cout << std::endl << "K: " << K_temp << std::endl;
             for (int y = j - k_size, a = 0; y <= j + k_size; y++, a++) {
                 for (int x = i - k_size, b = 0; x <= i + k_size; x++, b++) {
-//                    cout << "x: " << x << endl;
-//                    cout << "y: " << y << endl;
                     if (y < 0 || x < 0 || x >= I.nc() || y >= I.nr()) {
                         continue;
                     }
-                    I_temp = I_temp + (scale * ((I[y][x])) * dims[y][x]);
+                    I_temp = I_temp + (((I[y][x])) * dims[y][x]);
                     K_temp = K_temp + (K[a][b] * dims[y][x]);
+//                    cout << "I: " << I[y][x] << endl;
+//                    cout << "K: " << K[a][b] << endl;
+//                    getchar();
                 }
             }
             I_temp.handle_numeric_error();
             K_temp.handle_numeric_error();
-//            std::cout << "I: " << I_temp << std::endl;
-//            std::cout << std::endl << "K: " << K_temp << std::endl;
             output[j][i] = GP(I_temp, K_temp, m);
             output[j][i].handle_numeric_error();
-//            std::cout << "output: " << output[j][i] << std::endl;
-//            cout << "i, j: " << i << ", " << j << endl;
-//            if (j == 4 && i == 6) {
-//                getchar();
-//            }
-//            cout << "Computed " << ++z << " elements" << endl;
         }
     }
     return output;
+}
+
+void output_default_convolution(dlib::array2d<multivector<double>> &matrix) {
+    cout << "Saving output... " << endl;
+    auto sa_start = std::chrono::high_resolution_clock::now();
+    dlib::array2d<unsigned char> output;
+    output.set_size(matrix.nr(), matrix.nc());
+
+    OrthonormalMetric<double> m;
+
+    for (int j = 0; j < matrix.nr(); j++) {
+        for (int i = 0; i < matrix.nc(); i++) {
+            double g = ((matrix[j][i]).getCoeff());
+
+            g = g < 0 ? 0 : g;
+            g = g > 255 ? 255 : g;
+
+            output[j][i] = (unsigned char)(g);
+        }
+    }
+
+    dlib::save_png(output, "output.png");
+    auto sa_end = std::chrono::high_resolution_clock::now();
+    auto sa_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(sa_end - sa_start).count()/1000.0;
+    cout << "Done! (" << sa_elapsed << " seconds)" << endl;
 }
 
 
@@ -72,38 +85,33 @@ int main() {
 //    CliffLib::build_lookup_table(OrthonormalMetric<double>());
 
     dlib::array2d<double> img;
-    dlib::load_png(img, "/home/eduardovera/Workspace/CliffLib/test.png");
+    dlib::load_png(img, "/home/eduardovera/Workspace/CliffLib/3x3.png");
+    dlib::array2d<double> k1;
+    k1.set_size(3, 3);
 
-//    dlib::array2d<unsigned char> img;
-//    dlib::assign_image(img, imgRGB);
+    k1[0][0] = 1;
+    k1[0][1] = 2;
+    k1[0][2] = 3;
+    k1[1][0] = 4;
+    k1[1][1] = 5;
+    k1[1][2] = 6;
+    k1[2][0] = -38;
+    k1[2][1] = 8;
+    k1[2][2] = 9;
 
-    dlib::array2d<double> kernel;
 
-    kernel.set_size(3, 3);
+    dlib::array2d<double> k2;
+    k2.set_size(3, 3);
 
-    //Gx
-
-    kernel[0][0] = -1;
-    kernel[0][1] = 0;
-    kernel[0][2] = +1;
-    kernel[1][0] = -2;
-    kernel[1][1] = 0;
-    kernel[1][2] = +2;
-    kernel[2][0] = -1;
-    kernel[2][1] = 0;
-    kernel[2][2] = +1;
-
-    //Gy
-
-//    kernel[0][0] = 1;
-//    kernel[0][1] = 2;
-//    kernel[0][2] = 1;
-//    kernel[1][0] = 0;
-//    kernel[1][1] = 0;
-//    kernel[1][2] = 0;
-//    kernel[2][0] = -1;
-//    kernel[2][1] = -2;
-//    kernel[2][2] = -1;
+    k2[0][0] = -1;
+    k2[0][1] = -1;
+    k2[0][2] = -1;
+    k2[1][0] = -1;
+    k2[1][1] = 8;
+    k2[1][2] = -1;
+    k2[2][0] = -1;
+    k2[2][1] = -1;
+    k2[2][2] = -1;
 
 
     auto s_end = std::chrono::high_resolution_clock::now();
@@ -112,56 +120,51 @@ int main() {
 
     cout << "Starting convolution... " << endl;
     auto c_start = std::chrono::high_resolution_clock::now();
-    dlib::array2d<multivector<double>> G = convolution(img, kernel);
+    dlib::array2d<multivector<double>> G = convolution(k1, k2);
     auto c_end = std::chrono::high_resolution_clock::now();
     auto c_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(c_end - c_start).count()/1000.0;
     cout << "Done! (" << c_elapsed << " seconds)" << endl;
 
-    cout << "Saving output... " << endl;
-    auto sa_start = std::chrono::high_resolution_clock::now();
-    dlib::array2d<unsigned char> output;
-    output.set_size(img.nr(), img.nc());
+    dlib::array2d<double> I_;
+    I_.set_size(3, 3);
 
-    OrthonormalMetric<double> m;
-
-    double min = numeric_limits<double>::infinity();
-    double max = -numeric_limits<double>::infinity();
-
-    for (int j = 0; j < img.nr(); j++) {
-        for (int i = 0; i < img.nc(); i++) {
-            double g = (G[j][i]).getCoeff();
-            if (g > max) {
-                max = g;
-            }
-            if (g < min) {
-                min = g;
-            }
+    for (int j = 0; j < G.nr(); j++) {
+        for (int i = 0; i < G.nc(); i++) {
+            I_[j][i] = (G[j][i]).getCoeff();
+//            cout << (G[j][i]).getCoeff() << endl;
         }
     }
 
-    double d = 1.0 / (max - min);
+//    dlib::array2d<double> k;
+//    k.set_size(3, 3);
 
-    for (int j = 0; j < img.nr(); j++) {
-        for (int i = 0; i < img.nc(); i++) {
-            double g = ((G[j][i]).getCoeff());
+//    k[0][0] = 4;
+//    k[0][1] = 0;
+//    k[0][2] = -4;
+//    k[1][0] = 0;
+//    k[1][1] = 0;
+//    k[1][2] = 0;
+//    k[2][0] = -4;
+//    k[2][1] = 0;
+//    k[2][2] = 4;
 
-            g = g < 0 ? 0 : g;
-            g = g > 255 ? 255 : g;
 
-            output[j][i] = (unsigned char)(g);
+
+    G = convolution(img, I_);
+
+//    dlib::array2d<double> temp;
+//    temp.set_size(G.nr(), G.nc());
+
+    for (int j = 0; j < G.nr(); j++) {
+        for (int i = 0; i < G.nc(); i++) {
+//            I_[j][i] = (G[j][i]).getCoeff();
+            cout << (G[j][i]).getCoeff() << endl;
         }
     }
 
-    dlib::save_png(output, "output.png");
-    auto sa_end = std::chrono::high_resolution_clock::now();
-    auto sa_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(sa_end - sa_start).count()/1000.0;
-    cout << "Done! (" << sa_elapsed << " seconds)" << endl;
+//    G = convolution(temp, k2);
+//    output_default_convolution(G);
 
-//    multivector<double> I = (7*e(67))+(98*e(68))+(48*e(87))+(243*e(88))+(199*e(107))+(255*e(108));
-//    multivector<double> K = (-1*e(66))-(1*e(67))-(1*e(68))-(1*e(86))+(8*e(87))-(1*e(88))-(1*e(106))-(1*e(107))-(1*e(108));
-
-//    OrthonormalMetric<double> m;
-//    cout << GP(I, K, m) << endl;
 
 }
 
