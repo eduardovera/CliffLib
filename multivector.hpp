@@ -15,36 +15,36 @@
 
 #define TOLERANCE 0.00001
 
-#define MAX_BITS 401
+#define MAX_BITS 301
 
 bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
 //    size_t b_first = b._Find_first();
 
 //    return (a._Find_first() < b_first) && (b_first != b.size());
 
-    std::bitset<MAX_BITS> a_c = a;
-    std::bitset<MAX_BITS> b_c = b;
+//    std::bitset<MAX_BITS> a_c = a;
+//    std::bitset<MAX_BITS> b_c = b;
 
-    for (int i = 0; i <= MAX_BITS; i++) {
-        if (a_c.test(i)) {
-            a_c.flip(i);
-        }
-        if (b_c.test(i)) {
-            b_c.flip(i);
-        }
-        if (a_c.count() == 0 && b_c.count() != 0) {
-            return true;
-        }
-        if (b_c.count() == 0) {
-            return false;
-        }
-    }
+//    for (int i = 0; i <= MAX_BITS; i++) {
+//        if (a_c.test(i)) {
+//            a_c.flip(i);
+//        }
+//        if (b_c.test(i)) {
+//            b_c.flip(i);
+//        }
+//        if (a_c.count() == 0 && b_c.count() != 0) {
+//            return true;
+//        }
+//        if (b_c.count() == 0) {
+//            return false;
+//        }
+//    }
 
-//    return a.to_string().compare(b.to_string()) < 0;
+    return a.to_string().compare(b.to_string()) < 0;
 }
 
 bool operator >(const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
-    return ! (a < b);
+    return a.to_string().compare(b.to_string()) > 0;
 }
 
 
@@ -69,24 +69,25 @@ namespace CliffLib {
     template<std::size_t N>
     struct Comparer {
         bool operator () (const std::bitset<N> &x, const std::bitset<N> &y) const {
+            return x.to_string().compare(y.to_string()) < 0;
 
-            std::bitset<MAX_BITS> a_c = x;
-            std::bitset<MAX_BITS> b_c = y;
+//            std::bitset<MAX_BITS> a_c = x;
+//            std::bitset<MAX_BITS> b_c = y;
 
-            for (int i = 0; i <= MAX_BITS; i++) {
-                if (a_c.test(i)) {
-                    a_c.flip(i);
-                }
-                if (b_c.test(i)) {
-                    b_c.flip(i);
-                }
-                if (a_c.count() == 0 && b_c.count() != 0) {
-                    return true;
-                }
-                if (b_c.count() == 0) {
-                    return false;
-                }
-            }
+//            for (int i = 0; i <= MAX_BITS; i++) {
+//                if (a_c.test(i)) {
+//                    a_c.flip(i);
+//                }
+//                if (b_c.test(i)) {
+//                    b_c.flip(i);
+//                }
+//                if (a_c.count() == 0 && b_c.count() != 0) {
+//                    return true;
+//                }
+//                if (b_c.count() == 0) {
+//                    return false;
+//                }
+//            }
 
 //            size_t y_first = y._Find_first();
 //            return (x._Find_first() < y_first) && (y_first != y.size());
@@ -406,8 +407,6 @@ namespace CliffLib {
     multivector<typename std::common_type<T, U>::type> generic_call (const multivector<T> &m1, const multivector<U> &m2, auto f ) {
         multivector<typename std::common_type<T, U>::type> result;
         multivector<typename std::common_type<T, U>::type> partial;
-        multivector<typename std::common_type<T, U>::type> t1;
-        multivector<typename std::common_type<T, U>::type> t2;
         for (auto it1 = m1.M.begin(); it1 != m1.M.end(); ++it1) {
             for (auto it2 = m2.M.begin(); it2 != m2.M.end(); ++it2) {
                 partial = f(it1->second, it1->first, it2->second, it2->first);

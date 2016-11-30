@@ -9,7 +9,7 @@ using namespace std;
 
 using namespace CliffLib;
 
-dlib::array2d<multivector<double>> convolution(const dlib::array2d<unsigned char> &I, const dlib::array2d<double> &K) {
+dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, const dlib::array2d<double> &K) {
     OrthonormalMetric<double> m;
     dlib::array2d<multivector<double>> dims;
     dims.set_size(I.nr(), I.nc());
@@ -51,7 +51,10 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<unsigned char
             output[j][i] = GP(I_temp, K_temp, m);
             output[j][i].handle_numeric_error();
 //            std::cout << "output: " << output[j][i] << std::endl;
-//            getchar();
+//            cout << "i, j: " << i << ", " << j << endl;
+//            if (j == 4 && i == 6) {
+//                getchar();
+//            }
 //            cout << "Computed " << ++z << " elements" << endl;
         }
     }
@@ -61,32 +64,47 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<unsigned char
 
 int main() {
 
-    CliffLib::N_DIMS = 400;
+    CliffLib::N_DIMS = 300;
 
     CliffLib::build_masks();
     cout << "Loading image... " << endl;
     auto s_start = std::chrono::high_resolution_clock::now();
 //    CliffLib::build_lookup_table(OrthonormalMetric<double>());
 
-    dlib::array2d<dlib::rgb_pixel> imgRGB;
-    dlib::load_image(imgRGB, "/home/eduardovera/Workspace/CliffLib/6.png");
+    dlib::array2d<double> img;
+    dlib::load_png(img, "/home/eduardovera/Workspace/CliffLib/test.png");
 
-    dlib::array2d<unsigned char> img;
-    dlib::assign_image(img, imgRGB);
+//    dlib::array2d<unsigned char> img;
+//    dlib::assign_image(img, imgRGB);
 
     dlib::array2d<double> kernel;
 
     kernel.set_size(3, 3);
 
-    kernel[0][0] = 0;
-    kernel[0][1] = -1;
-    kernel[0][2] = 0;
-    kernel[1][0] = -1;
-    kernel[1][1] = 4;
-    kernel[1][2] = -1;
-    kernel[2][0] = 0;
-    kernel[2][1] = -1;
-    kernel[2][2] = 0;
+    //Gx
+
+    kernel[0][0] = -1;
+    kernel[0][1] = 0;
+    kernel[0][2] = +1;
+    kernel[1][0] = -2;
+    kernel[1][1] = 0;
+    kernel[1][2] = +2;
+    kernel[2][0] = -1;
+    kernel[2][1] = 0;
+    kernel[2][2] = +1;
+
+    //Gy
+
+//    kernel[0][0] = 1;
+//    kernel[0][1] = 2;
+//    kernel[0][2] = 1;
+//    kernel[1][0] = 0;
+//    kernel[1][1] = 0;
+//    kernel[1][2] = 0;
+//    kernel[2][0] = -1;
+//    kernel[2][1] = -2;
+//    kernel[2][2] = -1;
+
 
     auto s_end = std::chrono::high_resolution_clock::now();
     auto s_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(s_end - s_start).count()/1000.0;
@@ -109,25 +127,28 @@ int main() {
     double min = numeric_limits<double>::infinity();
     double max = -numeric_limits<double>::infinity();
 
-//    for (int j = 0; j < img.nr(); j++) {
-//        for (int i = 0; i < img.nc(); i++) {
-//            double g = (G[j][i]).getCoeff();
-//            if (g > max) {
-//                max = g;
-//            }
-//            if (g < min) {
-//                min = g;
-//            }
-//        }
-//    }
+    for (int j = 0; j < img.nr(); j++) {
+        for (int i = 0; i < img.nc(); i++) {
+            double g = (G[j][i]).getCoeff();
+            if (g > max) {
+                max = g;
+            }
+            if (g < min) {
+                min = g;
+            }
+        }
+    }
 
-//    double d = 1.0 / (max - min);
+    double d = 1.0 / (max - min);
 
     for (int j = 0; j < img.nr(); j++) {
         for (int i = 0; i < img.nc(); i++) {
             double g = ((G[j][i]).getCoeff());
 
-            output[j][i] = (unsigned char)((255 * g) + 255);
+            g = g < 0 ? 0 : g;
+            g = g > 255 ? 255 : g;
+
+            output[j][i] = (unsigned char)(g);
         }
     }
 
@@ -135,6 +156,12 @@ int main() {
     auto sa_end = std::chrono::high_resolution_clock::now();
     auto sa_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(sa_end - sa_start).count()/1000.0;
     cout << "Done! (" << sa_elapsed << " seconds)" << endl;
+
+//    multivector<double> I = (7*e(67))+(98*e(68))+(48*e(87))+(243*e(88))+(199*e(107))+(255*e(108));
+//    multivector<double> K = (-1*e(66))-(1*e(67))-(1*e(68))-(1*e(86))+(8*e(87))-(1*e(88))-(1*e(106))-(1*e(107))-(1*e(108));
+
+//    OrthonormalMetric<double> m;
+//    cout << GP(I, K, m) << endl;
 
 }
 
