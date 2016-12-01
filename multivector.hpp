@@ -15,7 +15,7 @@
 
 #define TOLERANCE 0.00001
 
-#define MAX_BITS 301
+#define MAX_BITS 10
 
 bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
 //    size_t b_first = b._Find_first();
@@ -114,10 +114,11 @@ namespace CliffLib {
             std::map<mask, coeff_type, Comparer<MAX_BITS>> M;
 
             coeff_type getCoeff() {
-                if (M.begin() == M.end()) {
+                auto it = M.find(mask(0));
+                if (it == M.end()) {
                     return 0;
                 }
-                return M[mask(0)];
+                return it->second;
             }
 
             std::string get_base(std::bitset<MAX_BITS> m) const {
