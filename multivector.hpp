@@ -15,7 +15,7 @@
 
 #define TOLERANCE 0.00001
 
-#define MAX_BITS 10
+#define MAX_BITS 101
 
 bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
 //    size_t b_first = b._Find_first();

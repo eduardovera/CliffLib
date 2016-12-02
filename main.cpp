@@ -10,7 +10,6 @@ using namespace std;
 using namespace CliffLib;
 
 void flip_kernel(const dlib::array2d<double> &k, dlib::array2d<double> &k_) {
-//    k_.set_size(k.nr(), k.nc());
     for (int j = k_.nr() - 1, a = 0; j >= 0; j--, a++) {
         for (int i = k_.nc() - 1, b = 0; i >= 0; i--, b++) {
             k_[a][b] = k[j][i];
@@ -20,33 +19,39 @@ void flip_kernel(const dlib::array2d<double> &k, dlib::array2d<double> &k_) {
 
 dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, dlib::array2d<double> &K) {
     OrthonormalMetric<double> m;
-    dlib::array2d<multivector<double>> dims;
-    dims.set_size(I.nr(), I.nc());
-    for (int j = 0, z = 1; j < K.nr(); j++) {
-        for (int i = 0; i < K.nc(); i++, z++) {
-            dims[j][i] = MASKS[z];
-        }
-    }
 
     dlib::array2d<double> K_;
     K_.set_size(K.nr(), K.nc());
     flip_kernel(K, K_);
 
-    dlib::array2d<multivector<double>> output;
-    output.set_size(I.nr(), I.nc());
-
     int k_size = K_.nc() >> 1;
+    dlib::array2d<multivector<double>> output;
+    output.set_size(I.nr() + (2 * k_size), I.nc() + (2 * k_size));
 
-    for (int j = 0; j < I.nr(); j++) {
-        for (int i = 0; i < I.nc(); i++) {
+    dlib::array2d<multivector<double>> dims;
+    dims.set_size(output.nr(), output.nc());
+    for (int j = 0, z = 1; j < K.nr(); j++) {
+        for (int i = 0; i < K.nc(); i++, z++) {
+            dims[j][i] = e(z);
+        }
+    }
+
+    for (int j = 0, im_j = 0; j < output.nr(); j++, im_j++) {
+        for (int i = 0, im_i = 0; i < output.nc(); i++, im_i++) {
             multivector<double> I_temp;
             multivector<double> K_temp;
             for (int y = j - k_size, a = 0; y <= j + k_size; y++, a++) {
                 for (int x = i - k_size, b = 0; x <= i + k_size; x++, b++) {
-                    if (y < 0 || x < 0 || x >= I.nc() || y >= I.nr()) {
+                    if (y < 0 || x < 0 || x >= output.nc() || y >= output.nr()) {
                         continue;
                     }
-                    I_temp = I_temp + (I[y][x] * dims[a][b]);
+                    double img_at;
+                    if (y - k_size < 0 || x - k_size < 0 || y - k_size + 1 > I.nr() || x - k_size + 1> I.nc()) {
+                        img_at = 0;
+                    } else {
+                        img_at = I[y - k_size][x - k_size];
+                    }
+                    I_temp = I_temp + (img_at * dims[a][b]);
                     K_temp = K_temp + (K_[a][b] * dims[a][b]);
                 }
             }
@@ -54,10 +59,6 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, d
             K_temp.handle_numeric_error();
             output[j][i] = GP(I_temp, K_temp, m);
             output[j][i].handle_numeric_error();
-//            cout << "I: " << I_temp << endl;
-//            cout << "K: " << K_temp << endl;
-//            cout << "OUT: " << output[j][i] << endl;
-//            getchar();
         }
     }
     return output;
@@ -91,9 +92,8 @@ void output_default_convolution(dlib::array2d<multivector<double>> &matrix) {
 
 int main() {
 
-    CliffLib::N_DIMS = 9;
+    CliffLib::N_DIMS = 100;
 
-    CliffLib::build_masks();
     cout << "Loading image... " << endl;
     auto s_start = std::chrono::high_resolution_clock::now();
 //    CliffLib::build_lookup_table(OrthonormalMetric<double>());
@@ -182,14 +182,29 @@ int main() {
 //    dlib::array2d<double> temp;
 //    temp.set_size(G.nr(), G.nc());
 
-    dlib::array2d<multivector<double>> G = convolution(I_, k2);
-    for (int j = 0; j < temp.nr(); j++) {
-        for (int i = 0; i < temp.nc(); i++) {
-            cout << (G[j][i]).getCoeff() << endl;
+//    dlib::array2d<multivector<double>> G = convolution(I_, k2);
+//    for (int j = 0; j < G.nr(); j++) {
+//        for (int i = 0; i < G.nc(); i++) {
+//            cout << (G[j][i]).getCoeff() << endl;
+//        }
+//    }
+
+    OrthonormalMetric<double> m;
+//    dlib::array2d<multivector<double>> K = convolution(k1, k2);
+
+    multivector<double> k;
+    for (int j = 0, z = 1; j < k1.nr(); j++) {
+        for (int i = 0; i < k1.nc(); i++, z++) {
+            k = k + (k1[j][i] * e(z));
         }
     }
 
-    output_default_convolution(G);
+    k.handle_numeric_error();
+    cout << k << endl;
+    cout << IGP(temp[2][2], k, m) << endl;
+
+
+//    output_default_convolution(G);
 
 
 }
