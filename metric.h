@@ -7,9 +7,9 @@ template<class T>
 class Metric {
     public:
         virtual T factor(long long i, long long j) = 0;
-        T factorByMask (auto i, auto j) {
-            return 1;
-        }
+        virtual T factorByMask (mask i, mask j) = 0;// {
+//            return -1;
+//        }
 
 };
 
@@ -34,6 +34,40 @@ class NonOrthogonalMetric : public Metric<T> {
 
 };
 
+template<class T>
+class ConformalMetric : public Metric<T> {
+
+    private:
+        std::vector<T> d;
+
+    public:
+        ConformalMetric() {}
+        ConformalMetric(std::vector<T> d) {
+            this->d = d;
+        }
+
+        T factor (long long i, long long j) {
+            if (i == j) {
+                return d[i];
+            }
+            return 0;
+        }
+
+        T factorByMask (mask i, mask j) {
+            if (i == j && i.to_ulong() == 1) {
+                return 0;
+            } else if (i == j && (i >> 50).to_ulong() == 1) {
+                return 0;
+            } else if (i == j) {
+                return 1;
+            } else if (i != j && i.to_ulong() == 1 && (j >> 50).to_ulong() == 1) {
+                return -1;
+            } else if (i != j && (i >> 50).to_ulong() == 1 && j.to_ulong() == 1)
+            return -1;
+        }
+
+
+};
 
 template<class T>
 class OrthogonalMetric : public Metric<T> {
@@ -71,7 +105,7 @@ class OrthonormalMetric : public OrthogonalMetric<T> {
             return i == j;
         }
 
-        T factorByMask (auto i, auto j) {
+        T factorByMask (mask i, mask j) {
             return i == j;
         }
 };

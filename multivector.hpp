@@ -6,16 +6,17 @@
 #include <bitset>
 #include <algorithm>
 #include <type_traits>
-#include <metric.h>
 #include <functional>
 #include <stdexcept>
 #include <vector>
 #include <assert.h>
 #include <string>
+#define MAX_BITS 51
+typedef std::bitset<MAX_BITS> mask;
+#include <metric.h>
 
 #define TOLERANCE 0.00001
 
-#define MAX_BITS 101
 
 bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
 //    size_t b_first = b._Find_first();
@@ -52,7 +53,6 @@ namespace CliffLib {
 
     template<class coeff_type>
     class multivector;
-    typedef std::bitset<MAX_BITS> mask;
     static void build_masks();
 
     static int N_DIMS = -1;
@@ -113,7 +113,7 @@ namespace CliffLib {
 
             std::map<mask, coeff_type, Comparer<MAX_BITS>> M;
 
-            coeff_type getCoeff() {
+            coeff_type getScalar() {
                 auto it = M.find(mask(0));
                 if (it == M.end()) {
                     return 0;
@@ -124,7 +124,7 @@ namespace CliffLib {
             std::string get_base(std::bitset<MAX_BITS> m) const {
                 std::string ret = "";
                 mask binary = m;
-                for (int i = 1; i < MAX_BITS; i++) {
+                for (int i = 0; i < MAX_BITS; i++) {
                     if (binary.test(i)) {
                         ret.append("(e" + std::to_string(i) + ")");
                         binary.flip(i);
@@ -136,6 +136,7 @@ namespace CliffLib {
                 return ret;
             }
 
+            multivector<coeff_type> get_portion(long);
             template<class T> friend multivector<T> e(int);
             template<class T> friend multivector<T> scalar(T);
             template<class T> friend multivector<T> take_grade(const multivector<T> &, const int);
@@ -486,9 +487,11 @@ namespace CliffLib {
         auto SCP = [&] (const T coef1, mask mask1, const U coef2, mask mask2) {
             multivector<typename std::common_type<T, U>::type> multivector_r;
             mask mask_and = mask1 & mask2;
+
             mask mask_xor = mask1 ^ mask2;
+//            std::cout << mask_xor << std::endl;
             if (mask_xor.count() == 0) {
-                multivector_r.M[mask_xor] = canonical_sort(mask1, mask2) * metric.factorByMask(mask_and, mask_and) * coef1 * coef2;
+                multivector_r.M[mask_xor] = canonical_sort(mask1, mask2) * metric.factorByMask(mask1, mask2) * coef1 * coef2;
             }
             return multivector_r;
         };
@@ -728,6 +731,15 @@ namespace CliffLib {
         for (int i = 0; i <= N_DIMS; i++) {
             MASKS[i] = e(i);
         }
+    }
+
+    template<class T>
+    multivector<T> multivector<T>::get_portion(long index) {
+        auto it = M.find(mask(1) << index);
+        if (it == M.end()) {
+            return 0 * e<T>(index);
+        }
+        return it->second * e<T>(index);
     }
 
 }
