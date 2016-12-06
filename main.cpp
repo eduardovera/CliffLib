@@ -34,7 +34,7 @@ dlib::array2d<double> multivec_to_double(dlib::array2d<multivector<double>> &m) 
 }
 
 
-void flip_kernel(const dlib::array2d<multivector<double>> &k, dlib::array2d<multivector<double>> &k_) {
+void flip_kernel(const dlib::array2d<double> &k, dlib::array2d<double> &k_) {
     for (int j = k_.nr() - 1, a = 0; j >= 0; j--, a++) {
         for (int i = k_.nc() - 1, b = 0; i >= 0; i--, b++) {
             k_[a][b] = k[j][i];
@@ -42,107 +42,80 @@ void flip_kernel(const dlib::array2d<multivector<double>> &k, dlib::array2d<mult
     }
 }
 
-dlib::array2d<multivector<double>> deconvolution(dlib::array2d<multivector<double>> &output, dlib::array2d<multivector<double>> &K) {
-    dlib::array2d<multivector<double>> K_;
+dlib::array2d<double> deconvolution(dlib::array2d<multivector<double>> &output, dlib::array2d<double> &K) {
+    dlib::array2d<double> K_;
     K_.set_size(K.nr(), K.nc());
     flip_kernel(K, K_);
 
-
-    multivector<double> K_temp;
-
-    for (int j = 0; j < K_.nr(); j++) {
-        for (int i = 0; i < K_.nc(); i++) {
-            K_temp = K_temp + K_[j][i];
+    dlib::array2d<multivector<double>> dims;
+    dims.set_size(output.nr(), output.nc());
+    for (int j = 0, z = 1; j < output.nr(); j++) {
+        for (int i = 0; i < output.nc(); i++, z++) {
+            dims[j][i] = e(z);
         }
     }
-    K_temp.handle_numeric_error();
 
     int k_size = K_.nc() >> 1;
-    dlib::array2d<multivector<double>> input;
-    input.set_size(output.nr() - (2 * k_size), output.nc() - (2 * k_size));
+    dlib::array2d<double> input;
+    input.set_size(output.nr(), output.nc());
 
     multivector<double> I;
-
-    for (int j = k_size, r = 0; j < output.nr() - k_size; j = j+1, r++) {
-        for (int i = k_size, s = 0; i < output.nc() - k_size; i = i+1, s++) {
-
-            if ((j >= output.nr() - (2 * k_size)) || (i >= output.nc() - (2 * k_size))) {
-//                continue;
+    for (int j = 0; j < input.nr(); j = j+1) {
+        for (int i = 0; i < input.nc(); i = i+1) {
+            multivector<double> K_temp;
+            for (int y = j - k_size, a = 0, it = 1; y <= j + k_size; y++, a++) {
+                for (int x = i - k_size, b = 0; x <= i + k_size; x++, b++, it++) {
+                    if (y < 0 || x < 0 || x >= output.nc() || y >= output.nr()) {
+                        continue;
+                    }
+                    K_temp = K_temp + (K_[a][b] * dims[y][x]);
+                    K_temp.handle_numeric_error();
+                }
             }
-            I = IGP(output[j][i], K_temp, metric);
+            K_temp.handle_numeric_error();
+            I = GP(IGP(output[j][i], K_temp, metric), dims[j][i], metric);
             I.handle_numeric_error();
-
-//            for (int y = 0, it = 1; y < input.nr(); y++) {
-//                for (int x = 0; x < input.nc(); x++, it++) {
-//                    input[r][s] = I.get_portion(it);
-//                }
-//            }
-
-            cout << I << endl;
-
-            getchar();
-
-//            for (int y = j - k_size, a = 0, it = 1; y <= j + k_size; y++, a++) {
-//                for (int x = i - k_size, b = 0; x <= i + k_size; x++, b++, it++) {
-//                    if (x >= input.nc() || y >= input.nr() || x < 0 || y < 0) {
-//                        continue;
-//                    }
-//                    input[y][x] = I.get_portion(it);
-//                }
-//            }
-
+            input[j][i] = I.getScalar();
         }
     }
-
-    for (int j = 0; j < input.nr(); j++) {
-        for (int i = 0; i < input.nc(); i++) {
-            cout << input[j][i] << endl;
-        }
-    }
-
-
-
-
+    return input;
 }
 
-dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, const dlib::array2d<multivector<double>> &K) {
-    dlib::array2d<multivector<double>> K_;
+dlib::array2d<multivector<double>> convolution(dlib::array2d<multivector<double>> &I, dlib::array2d<double> &K) {
+    dlib::array2d<double> K_;
     K_.set_size(K.nr(), K.nc());
     flip_kernel(K, K_);
 
     int k_size = K_.nc() >> 1;
     dlib::array2d<multivector<double>> output;
-    output.set_size(I.nr() + (2 * k_size), I.nc() + (2 * k_size));
+    output.set_size(I.nr(), I.nc());
 
     dlib::array2d<multivector<double>> dims;
-    dims.set_size(K.nr(), K.nc());
-    for (int j = 0, z = 1; j < K.nr(); j++) {
-        for (int i = 0; i < K.nc(); i++, z++) {
+    dims.set_size(I.nr(), I.nc());
+    for (int j = 0, z = 1; j < I.nr(); j++) {
+        for (int i = 0; i < I.nc(); i++, z++) {
             dims[j][i] = e(z);
         }
     }
 
-    for (int j = 0, im_j = 0; j < output.nr(); j++, im_j++) {
-        for (int i = 0, im_i = 0; i < output.nc(); i++, im_i++) {
+
+    for (int j = 0; j < I.nr(); j++) {
+        for (int i = 0; i < I.nc(); i++) {
             multivector<double> I_temp;
             multivector<double> K_temp;
             for (int y = j - k_size, a = 0; y <= j + k_size; y++, a++) {
                 for (int x = i - k_size, b = 0; x <= i + k_size; x++, b++) {
-                    if (y < 0 || x < 0 || x >= output.nc() || y >= output.nr()) {
+                    if (y < 0 || x < 0 || x >= I.nc() || y >= I.nr()) {
                         continue;
                     }
-                    double img_at;
-                    if (y - k_size < 0 || x - k_size < 0 || y - k_size + 1 > I.nr() || x - k_size + 1> I.nc()) {
-                        img_at = 0;
-                    } else {
-                        img_at = I[y - k_size][x - k_size];
-                    }
-                    I_temp = I_temp + (img_at * dims[a][b]);
-                    K_temp = K_temp + (K_[a][b]);
+                    I_temp = I_temp + I[y][x];
+                    K_temp = K_temp + (K_[a][b] * dims[y][x]);
                 }
             }
             I_temp.handle_numeric_error();
             K_temp.handle_numeric_error();
+//            cout << I_temp << endl;
+//            cout << K_temp << endl;
             output[j][i] = GP(I_temp, K_temp, metric);
             output[j][i].handle_numeric_error();
         }
@@ -150,7 +123,7 @@ dlib::array2d<multivector<double>> convolution(const dlib::array2d<double> &I, c
     return output;
 }
 
-void output_default_convolution(dlib::array2d<multivector<double>> &matrix) {
+void output_default_convolution(dlib::array2d<multivector<double>> &matrix, string filename) {
     cout << "Saving output... " << endl;
     auto sa_start = std::chrono::high_resolution_clock::now();
     dlib::array2d<unsigned char> output;
@@ -169,23 +142,34 @@ void output_default_convolution(dlib::array2d<multivector<double>> &matrix) {
         }
     }
 
-    dlib::save_png(output, "output.png");
+    dlib::save_png(output, filename);
     auto sa_end = std::chrono::high_resolution_clock::now();
     auto sa_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(sa_end - sa_start).count()/1000.0;
     cout << "Done! (" << sa_elapsed << " seconds)" << endl;
 }
 
+template<class T>
+void print(const dlib::array2d<T> &m) {
+    for (int j = 0; j < m.nr(); j++) {
+        for (int i = 0; i < m.nc(); i++) {
+            cout << m[j][i] << endl;
+        }
+    }
+}
+
+dlib::array2d<double> conv(dlib::array2d<double> input, dlib::array2d<double> kernel, dlib::array2d<multivector<double>> &dict) {
+    for (int j = 0, z = 1; j < dict.nr(); j++) {
+        for (int i = 0; i < dict.nc(); i++, z++) {
+            dict[j][i] = e(z);
+        }
+    }
+
+
+}
 
 int main() {
 
     CliffLib::N_DIMS = 50;
-
-//    ConformalMetric<double> mC;
-
-//    multivector<double> A = e(0)^e(20)^e(50);
-////    multivector<double> B = GP(GP(A, e(4)^e(50), mC), INV(A, mC), mC);
-//    cout << GP(A, e(0)^e(50), mC) << endl;
-//    return 0;
 
     dlib::array2d<double> img;
 
@@ -222,25 +206,47 @@ int main() {
     dlib::array2d<double> k2;
     k2.set_size(3, 3);
 
-    k2[0][0] = 1;
-    k2[0][1] = 2;
-    k2[0][2] = 1;
+    k2[0][0] = -1;
+    k2[0][1] = -2;
+    k2[0][2] = -1;
     k2[1][0] = 0;
     k2[1][1] = 0;
     k2[1][2] = 0;
-    k2[2][0] = -1;
-    k2[2][1] = -2;
-    k2[2][2] = -1;
+    k2[2][0] = 1;
+    k2[2][1] = 2;
+    k2[2][2] = 1;
 
-    dlib::array2d<multivector<double>> K1 = double_to_multivec(k1);
-    dlib::array2d<multivector<double>> K2 = double_to_multivec(k2);
+    dlib::array2d<multivector<double>> IMG = double_to_multivec(img);
 
-    dlib::array2d<multivector<double>> K = convolution(img, K2);
-    dlib::array2d<multivector<double>> K_INV = deconvolution(K, K2);
+    dlib::array2d<multivector<double>> O1 = convolution(IMG, k1);
+    dlib::array2d<multivector<double>> O2 = convolution(O1, k2);
+    dlib::array2d<double> I1 = deconvolution(O2, k2);
+    dlib::array2d<multivector<double>> i = double_to_multivec(I1);
+    dlib::array2d<double> I2 = deconvolution(i, k1);
 
+    print(I2);
+
+
+
+//    dlib::array2d<multivector<double>> K2 = double_to_multivec(k2);
+//    dlib::array2d<multivector<double>> K = convolution(k1, K2);
+
+//    K = double_to_multivec(multivec_to_double(K));
 
 //    dlib::array2d<multivector<double>> IMG = convolution(img, K);
+//    output_default_convolution(IMG, "comK1K2.png");
 //    output_default_convolution(K);
 
-}
+//    dlib::array2d<multivector<double>> output = convolution(img, K);
+//    dlib::array2d<double> k = multivec_to_double(K);
 
+//    dlib::array2d<multivector<double>> b = deconvolution(IMG, K2);
+//    dlib::array2d<multivector<double>> B = double_to_multivec(b);
+
+//    dlib::array2d<multivector<double>> b = deconvolution(IMG, K2);
+
+//    output_default_convolution(IMG, "semK2.png");
+
+//    dlib::array2d<multivector<double>> t = deconvolution(b, K1);
+
+}

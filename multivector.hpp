@@ -18,29 +18,8 @@ typedef std::bitset<MAX_BITS> mask;
 #define TOLERANCE 0.00001
 
 
+
 bool operator < (const std::bitset<MAX_BITS> &a, const std::bitset<MAX_BITS> &b) {
-//    size_t b_first = b._Find_first();
-
-//    return (a._Find_first() < b_first) && (b_first != b.size());
-
-//    std::bitset<MAX_BITS> a_c = a;
-//    std::bitset<MAX_BITS> b_c = b;
-
-//    for (int i = 0; i <= MAX_BITS; i++) {
-//        if (a_c.test(i)) {
-//            a_c.flip(i);
-//        }
-//        if (b_c.test(i)) {
-//            b_c.flip(i);
-//        }
-//        if (a_c.count() == 0 && b_c.count() != 0) {
-//            return true;
-//        }
-//        if (b_c.count() == 0) {
-//            return false;
-//        }
-//    }
-
     return a.to_string().compare(b.to_string()) < 0;
 }
 
@@ -121,10 +100,18 @@ namespace CliffLib {
                 return it->second;
             }
 
+            multivector() {
+
+            }
+
+            multivector<coeff_type>(const multivector<coeff_type> &m) {
+                this->M = m.M;
+            }
+
             std::string get_base(std::bitset<MAX_BITS> m) const {
                 std::string ret = "";
                 mask binary = m;
-                for (int i = 0; i < MAX_BITS; i++) {
+                for (int i = 1; i < MAX_BITS; i++) {
                     if (binary.test(i)) {
                         ret.append("(e" + std::to_string(i) + ")");
                         binary.flip(i);
@@ -739,9 +726,8 @@ namespace CliffLib {
         if (it == M.end()) {
             return 0 * e<T>(index);
         }
-        return it->second * e<T>(index);
+        return e<T>(index);
     }
-
 }
 
 #endif // MULTIVECTOR_H
