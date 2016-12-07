@@ -16,7 +16,7 @@ dlib::array2d<multivector<double>> double_to_multivec(const dlib::array2d<double
     m_.set_size(m.nr(), m.nc());
     for (int j = 0, z = 1; j < m.nr(); j++) {
         for (int i = 0; i < m.nc(); i++, z++) {
-            m_[j][i] = m[j][i] * e(z);
+            m_[j][i] = scalar(m[j][i]);
         }
     }
     return m_;
@@ -42,7 +42,7 @@ void flip_kernel(const dlib::array2d<double> &k, dlib::array2d<double> &k_) {
     }
 }
 
-dlib::array2d<double> deconvolution(dlib::array2d<multivector<double>> &output, dlib::array2d<double> &K) {
+dlib::array2d<multivector<double>> deconvolution(dlib::array2d<multivector<double>> &output, dlib::array2d<double> &K) {
     dlib::array2d<double> K_;
     K_.set_size(K.nr(), K.nc());
     flip_kernel(K, K_);
@@ -56,7 +56,7 @@ dlib::array2d<double> deconvolution(dlib::array2d<multivector<double>> &output, 
     }
 
     int k_size = K_.nc() >> 1;
-    dlib::array2d<double> input;
+    dlib::array2d<multivector<double>> input;
     input.set_size(output.nr(), output.nc());
 
     multivector<double> I;
@@ -65,17 +65,22 @@ dlib::array2d<double> deconvolution(dlib::array2d<multivector<double>> &output, 
             multivector<double> K_temp;
             for (int y = j - k_size, a = 0, it = 1; y <= j + k_size; y++, a++) {
                 for (int x = i - k_size, b = 0; x <= i + k_size; x++, b++, it++) {
-                    if (y < 0 || x < 0 || x >= output.nc() || y >= output.nr()) {
+                    if (y < 0 || x < 0 || x >= input.nc() || y >= input.nr()) {
                         continue;
                     }
+//                    cout << K_[a][b] << " " << dims[y][x] << endl;
+//                    getchar();
                     K_temp = K_temp + (K_[a][b] * dims[y][x]);
-                    K_temp.handle_numeric_error();
                 }
             }
             K_temp.handle_numeric_error();
-            I = GP(IGP(output[j][i], K_temp, metric), dims[j][i], metric);
+            I = IGP(IGP(output[j][i], K_temp, metric), dims[j][i], metric);
             I.handle_numeric_error();
-            input[j][i] = I.getScalar();
+            input[j][i] = I;
+//            cout << K_temp << endl;
+//            cout << IGP(IGP(output[j][i], K_temp, metric), dims[j][i], metric) << endl;
+//            getchar();
+//            cout << IGP(I, dims[j][i], metric).getScalar() << endl;
         }
     }
     return input;
@@ -98,7 +103,6 @@ dlib::array2d<multivector<double>> convolution(dlib::array2d<multivector<double>
         }
     }
 
-
     for (int j = 0; j < I.nr(); j++) {
         for (int i = 0; i < I.nc(); i++) {
             multivector<double> I_temp;
@@ -108,16 +112,20 @@ dlib::array2d<multivector<double>> convolution(dlib::array2d<multivector<double>
                     if (y < 0 || x < 0 || x >= I.nc() || y >= I.nr()) {
                         continue;
                     }
-                    I_temp = I_temp + I[y][x];
+                    I_temp = I_temp + GP(I[y][x], dims[y][x], metric);
                     K_temp = K_temp + (K_[a][b] * dims[y][x]);
                 }
             }
             I_temp.handle_numeric_error();
             K_temp.handle_numeric_error();
-//            cout << I_temp << endl;
-//            cout << K_temp << endl;
+            cout << I_temp << endl;
+            cout << K_temp << endl;
+//            cout << "CONV: " << K_temp << endl;
+//            cout << "I (conv): " << I_temp << endl;
             output[j][i] = GP(I_temp, K_temp, metric);
             output[j][i].handle_numeric_error();
+//            cout << output[j][i] << endl;
+//            getchar();
         }
     }
     return output;
@@ -169,11 +177,38 @@ dlib::array2d<double> conv(dlib::array2d<double> input, dlib::array2d<double> ke
 
 int main() {
 
-    CliffLib::N_DIMS = 50;
+    CliffLib::N_DIMS = 12;
+
+//    multivector<double> A = -5-17*(e(1)^e(2))-41*(e(1)^e(5))+3*(e(2)^e(5))-49*(e(1)^e(6))+4*(e(2)^e(6))+1*(e(5)^e(6));
+//    multivector<double> B = 3*e(1);
+
+//    A = GP(A, e(1), metric);
+
+//    multivector<double> A = (8*e(1)^e(2)) -(e(2)) - (e(5)) - (e(6));
+//    multivector<double> B = REVERSE((8*e(1)^e(2)^e(5)) -(e(2)) - (e(5)) - (e(6)));
+
+
+//    multivector<double> C = GP(A, B, metric);
+
+//    cout << IGP(IGP(C, B, metric), e(1), metric) << endl;
+//    return 0;
+
+
 
     dlib::array2d<double> img;
 
 //    dlib::load_png(img, "/home/eduardovera/Workspace/CliffLib/6.png");
+
+//    img.set_size(5, 5);
+//    for (int j = 0; j < img.nr(); j++) {
+//        for (int i = 0; i < img.nc(); i++) {
+//            if (i == j) {
+//                img[i][j] = 255;
+//            } else {
+//                img[i][j] = 0;
+//            }
+//        }
+//    }
 
     img.set_size(3, 4);
     img[0][0] = 1;
@@ -220,11 +255,25 @@ int main() {
 
     dlib::array2d<multivector<double>> O1 = convolution(IMG, k1);
     dlib::array2d<multivector<double>> O2 = convolution(O1, k2);
-    dlib::array2d<double> I1 = deconvolution(O2, k2);
-    dlib::array2d<multivector<double>> i = double_to_multivec(I1);
-    dlib::array2d<double> I2 = deconvolution(i, k1);
+    dlib::array2d<multivector<double>> I1 = deconvolution(O2, k1);
+    dlib::array2d<multivector<double>> I2 = deconvolution(I1, k2);
 
-    print(I2);
+
+
+    cout << IMG[0][0] << endl;
+    cout << I2[0][0] << endl;
+
+
+//    print(multivec_to_double(IMG));
+//    print(multivec_to_double(I2));
+
+
+
+
+//    output_default_convolution(O1, "teste.png");
+//    dlib::array2d<multivector<double>> i = double_to_multivec(I1);
+//    dlib::array2d<double> I2 = deconvolution(i, k1);
+
 
 
 

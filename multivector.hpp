@@ -11,7 +11,7 @@
 #include <vector>
 #include <assert.h>
 #include <string>
-#define MAX_BITS 51
+#define MAX_BITS 13
 typedef std::bitset<MAX_BITS> mask;
 #include <metric.h>
 
@@ -468,6 +468,12 @@ namespace CliffLib {
         };
         return generic_call(m1, m2, GP);
     }
+
+    template<class T, class U>
+    multivector<typename std::common_type<T, U>::type> GP (T s, const multivector<U> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
+        return GP(scalar(s), m2, metric);
+    }
+
 
     template<class T, class U>
     typename std::common_type<T, U>::type  SCP (const multivector<T> &m1, const multivector<U> &m2, Metric<typename std::common_type<T, U>::type> &metric) {
