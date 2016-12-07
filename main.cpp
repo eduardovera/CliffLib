@@ -49,7 +49,7 @@ dlib::array2d<multivector<double>> deconvolution(dlib::array2d<multivector<doubl
 
     dlib::array2d<multivector<double>> dims;
     dims.set_size(output.nr(), output.nc());
-    for (int j = 0, z = 1; j < output.nr(); j++) {
+    for (int j = 0, z = seed; j < output.nr(); j++) {
         for (int i = 0; i < output.nc(); i++, z++) {
             dims[j][i] = e(z);
         }
@@ -74,6 +74,10 @@ dlib::array2d<multivector<double>> deconvolution(dlib::array2d<multivector<doubl
                 }
             }
             K_temp.handle_numeric_error();
+//            cout << output[j][i] << endl;
+//            cout << K_temp << endl;
+//            cout << IGP(output[j][i], K_temp, metric) << endl;
+//            getchar();
             I = IGP(IGP(output[j][i], K_temp, metric), dims[j][i], metric);
             I.handle_numeric_error();
             input[j][i] = I;
@@ -179,10 +183,18 @@ int main() {
 
     CliffLib::N_DIMS = 12;
 
-//    multivector<double> A = -5-17*(e(1)^e(2))-41*(e(1)^e(5))+3*(e(2)^e(5))-49*(e(1)^e(6))+4*(e(2)^e(6))+1*(e(5)^e(6));
-//    multivector<double> B = 3*e(1);
+    build_lookup_table(metric);
 
-//    A = GP(A, e(1), metric);
+    cout  << "Done" << endl;
+
+//    cout << GP(e(1), e(2), metric) << endl;
+
+//    return 0;
+
+//    multivector<double> A = -5-17*(e(1)^e(2))-41*(e(1)^e(5))+3*(e(2)^e(5))-49*(e(1)^e(6))+4*(e(2)^e(6))+1*(e(5)^e(6));
+//    multivector<double> B = 3*e(20);
+
+//    A = GP(A, e(20), metric);
 
 //    multivector<double> A = (8*e(1)^e(2)) -(e(2)) - (e(5)) - (e(6));
 //    multivector<double> B = REVERSE((8*e(1)^e(2)^e(5)) -(e(2)) - (e(5)) - (e(6)));
@@ -190,7 +202,10 @@ int main() {
 
 //    multivector<double> C = GP(A, B, metric);
 
-//    cout << IGP(IGP(C, B, metric), e(1), metric) << endl;
+//    cout << IGP(C, B, metric) << endl;
+
+//    cout << GP(3*e(2)^e(3), 4*e(2), metric) << endl;
+
 //    return 0;
 
 
@@ -264,7 +279,7 @@ int main() {
 //    cout << I2[0][0] << endl;
 
 
-    print(multivec_to_double(IMG));
+    print(IMG);
     print(multivec_to_double(I2));
 
 
