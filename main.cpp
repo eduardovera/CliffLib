@@ -42,7 +42,7 @@ void flip_kernel(const dlib::array2d<double> &k, dlib::array2d<double> &k_) {
     }
 }
 
-dlib::array2d<multivector<double>> deconvolution(dlib::array2d<multivector<double>> &output, dlib::array2d<double> &K) {
+dlib::array2d<multivector<double>> deconvolution(dlib::array2d<multivector<double>> &output, dlib::array2d<double> &K, int seed) {
     dlib::array2d<double> K_;
     K_.set_size(K.nr(), K.nc());
     flip_kernel(K, K_);
@@ -86,7 +86,7 @@ dlib::array2d<multivector<double>> deconvolution(dlib::array2d<multivector<doubl
     return input;
 }
 
-dlib::array2d<multivector<double>> convolution(dlib::array2d<multivector<double>> &I, dlib::array2d<double> &K) {
+dlib::array2d<multivector<double>> convolution(dlib::array2d<multivector<double>> &I, dlib::array2d<double> &K, int seed) {
     dlib::array2d<double> K_;
     K_.set_size(K.nr(), K.nc());
     flip_kernel(K, K_);
@@ -97,7 +97,7 @@ dlib::array2d<multivector<double>> convolution(dlib::array2d<multivector<double>
 
     dlib::array2d<multivector<double>> dims;
     dims.set_size(I.nr(), I.nc());
-    for (int j = 0, z = 1; j < I.nr(); j++) {
+    for (int j = 0, z = seed; j < I.nr(); j++) {
         for (int i = 0; i < I.nc(); i++, z++) {
             dims[j][i] = e(z);
         }
@@ -118,8 +118,8 @@ dlib::array2d<multivector<double>> convolution(dlib::array2d<multivector<double>
             }
             I_temp.handle_numeric_error();
             K_temp.handle_numeric_error();
-            cout << I_temp << endl;
-            cout << K_temp << endl;
+//            cout << I_temp << endl;
+//            cout << K_temp << endl;
 //            cout << "CONV: " << K_temp << endl;
 //            cout << "I (conv): " << I_temp << endl;
             output[j][i] = GP(I_temp, K_temp, metric);
@@ -253,19 +253,19 @@ int main() {
 
     dlib::array2d<multivector<double>> IMG = double_to_multivec(img);
 
-    dlib::array2d<multivector<double>> O1 = convolution(IMG, k1);
-    dlib::array2d<multivector<double>> O2 = convolution(O1, k2);
-    dlib::array2d<multivector<double>> I1 = deconvolution(O2, k1);
-    dlib::array2d<multivector<double>> I2 = deconvolution(I1, k2);
+    dlib::array2d<multivector<double>> O1 = convolution(IMG, k1, 1);
+    dlib::array2d<multivector<double>> O2 = convolution(O1, k2, 13);
+    dlib::array2d<multivector<double>> I1 = deconvolution(O2, k2, 13);
+    dlib::array2d<multivector<double>> I2 = deconvolution(I1, k1, 1);
 
 
 
-    cout << IMG[0][0] << endl;
-    cout << I2[0][0] << endl;
+//    cout << IMG[0][0] << endl;
+//    cout << I2[0][0] << endl;
 
 
-//    print(multivec_to_double(IMG));
-//    print(multivec_to_double(I2));
+    print(multivec_to_double(IMG));
+    print(multivec_to_double(I2));
 
 
 

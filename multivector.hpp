@@ -11,7 +11,7 @@
 #include <vector>
 #include <assert.h>
 #include <string>
-#define MAX_BITS 13
+#define MAX_BITS 25
 typedef std::bitset<MAX_BITS> mask;
 #include <metric.h>
 
