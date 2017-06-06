@@ -183,134 +183,33 @@ int main() {
 
     CliffLib::N_DIMS = 12;
 
-    build_lookup_table(metric);
+//    build_lookup_table(metric);
 
-    cout  << "Done" << endl;
+    multivector<double> I = 0*e(1)+2*e(2)+3*e(3)+5*e(4)+0*e(5);
+    multivector<double> I_ = 4*e(1)+16*e(2)+29*e(3)+31*e(4)+10*e(5);
 
-//    cout << GP(e(1), e(2), metric) << endl;
+    multivector<double> VV = IGP(I_, I, metric);
+    VV.handle_numeric_error();
 
-//    return 0;
+    multivector<double> B = (I^I_);
+    double n_b = 1.0 / SQR_NORM_REVERSE(B, metric);
+    B = B * n_b;
 
-//    multivector<double> A = -5-17*(e(1)^e(2))-41*(e(1)^e(5))+3*(e(2)^e(5))-49*(e(1)^e(6))+4*(e(2)^e(6))+1*(e(5)^e(6));
-//    multivector<double> B = 3*e(20);
+    double norm = -.210526/9.68382e-05;
 
-//    A = GP(A, e(20), metric);
+    cout << (B) << endl;
 
-//    multivector<double> A = (8*e(1)^e(2)) -(e(2)) - (e(5)) - (e(6));
-//    multivector<double> B = REVERSE((8*e(1)^e(2)^e(5)) -(e(2)) - (e(5)) - (e(6)));
+    cout << (VV) << endl;
 
+    double angle = 0.5 * atan2(norm, 0);
 
-//    multivector<double> C = GP(A, B, metric);
+    cout << angle << endl;
 
-//    cout << IGP(C, B, metric) << endl;
+    multivector<double> V = cos(angle) - (sin(angle) * B);
+    V.handle_numeric_error();
 
-//    cout << GP(3*e(2)^e(3), 4*e(2), metric) << endl;
-
-//    return 0;
-
-
-
-    dlib::array2d<double> img;
-
-//    dlib::load_png(img, "/home/eduardovera/Workspace/CliffLib/6.png");
-
-//    img.set_size(5, 5);
-//    for (int j = 0; j < img.nr(); j++) {
-//        for (int i = 0; i < img.nc(); i++) {
-//            if (i == j) {
-//                img[i][j] = 255;
-//            } else {
-//                img[i][j] = 0;
-//            }
-//        }
-//    }
-
-    img.set_size(3, 4);
-    img[0][0] = 1;
-    img[0][1] = 2;
-    img[0][2] = 3;
-    img[0][3] = 4;
-    img[1][0] = 5;
-    img[1][1] = 6;
-    img[1][2] = 7;
-    img[1][3] = 8;
-    img[2][0] = 9;
-    img[2][1] = 10;
-    img[2][2] = 11;
-    img[2][3] = 12;
-
-    dlib::array2d<double> k1;
-    k1.set_size(3, 3);
-
-    k1[0][0] = -1;
-    k1[0][1] = -1;
-    k1[0][2] = -1;
-    k1[1][0] = -1;
-    k1[1][1] = 8;
-    k1[1][2] = -1;
-    k1[2][0] = -1;
-    k1[2][1] = -1;
-    k1[2][2] = -1;
-
-
-    dlib::array2d<double> k2;
-    k2.set_size(3, 3);
-
-    k2[0][0] = -1;
-    k2[0][1] = -2;
-    k2[0][2] = -1;
-    k2[1][0] = 0;
-    k2[1][1] = 0;
-    k2[1][2] = 0;
-    k2[2][0] = 1;
-    k2[2][1] = 2;
-    k2[2][2] = 1;
-
-    dlib::array2d<multivector<double>> IMG = double_to_multivec(img);
-
-    dlib::array2d<multivector<double>> O1 = convolution(IMG, k1, 1);
-    dlib::array2d<multivector<double>> O2 = convolution(O1, k2, 13);
-    dlib::array2d<multivector<double>> I1 = deconvolution(O2, k2, 13);
-    dlib::array2d<multivector<double>> I2 = deconvolution(I1, k1, 1);
-
-
-
-//    cout << IMG[0][0] << endl;
-//    cout << I2[0][0] << endl;
-
-
-    print(IMG);
-    print(multivec_to_double(I2));
-
-
-
-
-//    output_default_convolution(O1, "teste.png");
-//    dlib::array2d<multivector<double>> i = double_to_multivec(I1);
-//    dlib::array2d<double> I2 = deconvolution(i, k1);
-
-
-
-
-//    dlib::array2d<multivector<double>> K2 = double_to_multivec(k2);
-//    dlib::array2d<multivector<double>> K = convolution(k1, K2);
-
-//    K = double_to_multivec(multivec_to_double(K));
-
-//    dlib::array2d<multivector<double>> IMG = convolution(img, K);
-//    output_default_convolution(IMG, "comK1K2.png");
-//    output_default_convolution(K);
-
-//    dlib::array2d<multivector<double>> output = convolution(img, K);
-//    dlib::array2d<double> k = multivec_to_double(K);
-
-//    dlib::array2d<multivector<double>> b = deconvolution(IMG, K2);
-//    dlib::array2d<multivector<double>> B = double_to_multivec(b);
-
-//    dlib::array2d<multivector<double>> b = deconvolution(IMG, K2);
-
-//    output_default_convolution(IMG, "semK2.png");
-
-//    dlib::array2d<multivector<double>> t = deconvolution(b, K1);
+    multivector<double> rebuild = IGP(GP(V, I, metric), V, metric);
+    rebuild.handle_numeric_error();
+    cout << rebuild << endl;
 
 }

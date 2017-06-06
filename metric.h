@@ -110,6 +110,29 @@ class OrthonormalMetric : public OrthogonalMetric<T> {
         }
 };
 
+template<class T>
+class MagicMetric : public OrthogonalMetric<T> {
+
+    public :
+        MagicMetric() {}
+
+        T factor (long long i, long long j) {
+            if (i <= j) {
+                return 1;
+            } else {
+                return -1;
+            }
+        }
+
+        T factorByMask (mask i, mask j) {
+            if (i.to_ulong() <= j.to_ulong()) {
+                return 1;
+            } else {
+                return -1;
+            }
+        }
+};
+
 
 #endif // METRIC_H
 
